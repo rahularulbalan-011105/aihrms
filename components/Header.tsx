@@ -1,0 +1,75 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import BrandMark from "./BrandMark";
+
+const NAV = [
+  { href: "/",                title: "Home" },
+  { href: "/features",        title: "Features" },
+  { href: "/ai-capabilities", title: "AI Capabilities" },
+  { href: "/pricing",         title: "Pricing" },
+  { href: "/integrations",    title: "Integrations" },
+  { href: "/case-studies",    title: "Case Studies" },
+  { href: "/blog",            title: "Blog" },
+  { href: "/faq",             title: "FAQ" },
+];
+
+export default function Header() {
+  const pathname = usePathname();
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname?.startsWith(href);
+
+  return (
+    <header className="bg-white border-b border-ink-100">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-4 flex items-center gap-6">
+        <Link href="/" className="flex items-center gap-3 shrink-0">
+          <BrandMark />
+          <div className="leading-tight">
+            <div className="font-display font-extrabold text-[20px] tracking-tight text-ink-900">
+              AI HRMS
+            </div>
+            <div className="text-[11px] text-ink-500 -mt-0.5">
+              Intelligent Hiring. Trusted Future.
+            </div>
+          </div>
+        </Link>
+
+        <nav className="hidden lg:flex items-center gap-7 mx-auto">
+          {NAV.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`text-[14px] font-medium transition relative ${
+                isActive(item.href)
+                  ? "text-brand-600"
+                  : "text-ink-700 hover:text-ink-900"
+              }`}
+            >
+              {item.title}
+              {isActive(item.href) && (
+                <span className="absolute -bottom-[18px] left-0 right-0 h-[2px] bg-brand-600 rounded-full" />
+              )}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-3 ml-auto lg:ml-0">
+          <Link
+            href="/login"
+            className="hidden sm:inline-flex px-5 py-2 rounded-lg border border-ink-200 text-[14px] font-semibold text-ink-700 hover:bg-ink-100 transition"
+          >
+            Login
+          </Link>
+          <Link
+            href="/book-demo"
+            className="inline-flex px-5 py-2 rounded-lg bg-[var(--gradient-brand)] text-white text-[14px] font-semibold shadow-sm hover:opacity-95 transition"
+            style={{ background: "var(--gradient-brand)" }}
+          >
+            Book Demo
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
