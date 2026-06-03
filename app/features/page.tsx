@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import Link from "next/link";
 import CTABanner from "@/components/CTABanner";
 
@@ -540,7 +541,7 @@ function BuildingGlyph() {
   );
 }
 function MiniIcon({ name }: { name: string }) {
-  const m: Record<string, JSX.Element> = {
+  const m: Record<string, ReactElement> = {
     shield: <ShieldIcon />,
     search: <SearchIcon />,
     plane:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>,
@@ -549,7 +550,7 @@ function MiniIcon({ name }: { name: string }) {
   return m[name] ?? <span>•</span>;
 }
 function FeatureGlyph({ name }: { name: string }) {
-  const m: Record<string, JSX.Element> = {
+  const m: Record<string, ReactElement> = {
     shield:      <ShieldIcon />,
     duplicate:   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="13" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" /><rect x="3" y="7" width="13" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" fill="white" /></svg>,
     robot:       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="12" rx="3" stroke="currentColor" strokeWidth="1.6" /><circle cx="9" cy="13" r="1.5" fill="currentColor" /><circle cx="15" cy="13" r="1.5" fill="currentColor" /><path d="M12 4v3" stroke="currentColor" strokeWidth="1.6" /></svg>,
