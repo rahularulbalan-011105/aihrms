@@ -16,7 +16,6 @@ export default function CTABanner({ title, description, primary, secondary }: Pr
         className="mx-auto max-w-[1280px] rounded-2xl overflow-hidden relative px-8 lg:px-12 py-8 lg:py-10 flex flex-col lg:flex-row items-center gap-6 lg:gap-8"
         style={{ background: "var(--gradient-brand)" }}
       >
-        {/* Illustration placeholder on the left */}
         <div className="hidden md:block w-[260px] shrink-0">
           <div
             className="rounded-xl"

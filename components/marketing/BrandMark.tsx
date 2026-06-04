@@ -1,7 +1,3 @@
-/**
- * Stylized brain glyph used as the AI HRMS logomark in the header and footer.
- * Pure SVG — swap in the real logo asset when available.
- */
 export default function BrandMark({ size = 36 }: { size?: number }) {
   return (
     <svg
