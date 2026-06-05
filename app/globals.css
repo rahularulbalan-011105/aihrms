@@ -82,6 +82,14 @@ h1, h2, h3, h4 {
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
 }
 
+/* Gradient CTA buttons — @utility makes these first-class Tailwind v4 classes */
+@utility btn-gradient-brand {
+  background: var(--gradient-brand);
+}
+@utility btn-gradient-company {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+}
+
 /* Used for the "Illustration placeholder" panels */
 .illus-placeholder {
   background:
