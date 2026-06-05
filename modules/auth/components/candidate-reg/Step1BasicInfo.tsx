@@ -52,7 +52,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
   return (
     <div>
       {/* Section heading */}
-      <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-ink-100">
+      <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-ink-100">
         <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center">
           <PersonIcon />
         </div>
@@ -60,7 +60,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       </div>
 
       {/* Two-column form grid */}
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid md:grid-cols-2 gap-3">
         <Field label="First Name" required error={localErrors.firstName}>
           <InputWithIcon icon={<PersonIcon />} value={data.firstName} onChange={(v) => { set("firstName", v); setLocalErrors((p) => ({ ...p, firstName: "" })); }} placeholder="Enter your first name" hasError={!!localErrors.firstName} />
         </Field>
@@ -91,7 +91,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       </div>
 
       {/* Hear about us */}
-      <div className="mt-5">
+      <div className="mt-3">
         <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
           Where did you hear about us?{" "}
           <span className="text-ink-400 font-normal">(Optional)</span>
@@ -99,7 +99,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
         <select
           value={data.hearAboutUs}
           onChange={(e) => set("hearAboutUs", e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition appearance-none"
+          className="w-full px-4 py-2 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition appearance-none"
         >
           <option value="">Select an option</option>
           {HEAR_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -107,7 +107,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       </div>
 
       {/* Terms */}
-      <div className="mt-5">
+      <div className="mt-3">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -134,7 +134,7 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       <button
         type="button"
         onClick={handleContinue}
-        className="mt-6 w-full py-3.5 rounded-xl text-white font-bold text-[15px] flex items-center justify-center gap-2 hover:opacity-95 transition"
+        className="mt-4 w-full py-2.5 rounded-xl text-white font-bold text-[15px] flex items-center justify-center gap-2 hover:opacity-95 transition"
         style={{ background: "var(--gradient-brand)" }}
       >
         Continue <ArrowRightIcon />
@@ -147,15 +147,15 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button type="button" className="flex items-center justify-center gap-2.5 py-3 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
+        <button type="button" className="flex items-center justify-center gap-2.5 py-2 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
           <GoogleIcon /> Continue with Google
         </button>
-        <button type="button" className="flex items-center justify-center gap-2.5 py-3 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
+        <button type="button" className="flex items-center justify-center gap-2.5 py-2 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
           <AppleIcon /> Continue with Apple
         </button>
       </div>
 
-      <p className="mt-5 text-center text-[12.5px] text-ink-500 flex items-center justify-center gap-1.5">
+      <p className="mt-3 text-center text-[12.5px] text-ink-500 flex items-center justify-center gap-1.5">
         <LockIcon /> Your information is safe with us. We never share your data.
       </p>
     </div>
@@ -190,7 +190,7 @@ function InputWithIcon({ icon, value, onChange, placeholder, type = "text", hasE
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full pl-10 pr-4 py-3 rounded-xl border text-[14px] bg-white outline-none transition ${
+        className={`w-full pl-10 pr-4 py-2 rounded-xl border text-[14px] bg-white outline-none transition ${
           hasError
             ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100"
             : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
@@ -213,7 +213,7 @@ function PhoneInput({ value, onChange, hasError = false }: {
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
         placeholder="Enter your phone number"
-        className={`flex-1 px-4 py-3 rounded-r-xl border text-[14px] bg-white outline-none transition ${
+        className={`flex-1 px-4 py-2 rounded-r-xl border text-[14px] bg-white outline-none transition ${
           hasError
             ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100"
             : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
