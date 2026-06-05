@@ -5,13 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authService } from "../services/auth.service";
 import type { UserRole } from "../types/auth.types";
-
-function BrandLogoImg({ height = 48 }: { height?: number }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo.png" alt="HireMind" height={height} width={Math.round(height * 1.46)} style={{ height: `${height}px`, width: "auto", objectFit: "contain" }} />
-  );
-}
+import AuthHeader from "./AuthHeader";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,93 +44,88 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-[#f4f1ff] overflow-hidden">
       {/* ── Header ── */}
-      <header className="border-b border-ink-100 bg-white">
-        <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-4 flex items-center justify-between">
-          <Link href="/">
-            <BrandLogoImg height={56} />
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/contact" className="text-[14px] text-ink-600 hover:text-ink-900 flex items-center gap-1.5 transition">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.6"/><path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              Need help?
-            </Link>
-            <Link href="/signup" className="inline-flex items-center gap-2 px-5 py-2 rounded-lg border-2 border-brand-600 text-brand-600 text-[14px] font-semibold hover:bg-brand-50 transition">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6"/><path d="M3 21c0-4 4-7 9-7s9 3 9 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-              Create Account
-            </Link>
-          </div>
-        </div>
-      </header>
+      <AuthHeader cta={{ label: "Create Account", href: "/signup", icon: <CreateAccountIcon /> }} />
 
       {/* ── Main content ── */}
-      <main className="flex-1 grid lg:grid-cols-[1fr_1fr] items-center">
+      <main className="flex-1 grid lg:grid-cols-[1fr_1fr] items-stretch min-h-0">
         {/* Left marketing panel */}
-        <div className="hidden lg:flex flex-col px-12 xl:px-20 py-12">
-          <h1 className="font-display text-[36px] xl:text-[42px] font-extrabold leading-[1.15] text-ink-900 tracking-tight">
+        <div className="hidden lg:flex flex-col justify-center px-12 xl:px-20 py-2">
+          <h1 className="font-display text-[34px] xl:text-[38px] font-extrabold leading-[1.15] text-ink-900 tracking-tight">
             Welcome back!<br />
             Let&apos;s build{" "}
             <span className="text-brand-600">winning</span>
             <br />
             futures together.
           </h1>
-          <p className="mt-4 text-ink-500 text-[15px] leading-relaxed max-w-[400px]">
-            Login to your AI HRMS account and continue your journey.
+          <p className="mt-2 text-ink-500 text-[14px] leading-relaxed max-w-[400px]">
+            Login to your HireMind account and continue your journey.
           </p>
 
-          <div className="mt-8 space-y-4">
-            <FeatureCard
-              icon={<CandidateIcon />}
-              iconBg="bg-brand-50"
-              iconColor="text-brand-600"
-              title="For Candidates"
-              desc="Find the right job, showcase your skills and take the next step in your career."
-              titleColor="text-brand-700"
-            />
-            <FeatureCard
-              icon={<CompanyIcon />}
-              iconBg="bg-green-50"
-              iconColor="text-green-600"
-              title="For Recruitment Companies"
-              desc="Find, engage and hire top talent faster with the power of AI."
-              titleColor="text-green-700"
-            />
+          {/* Feature cards + illustration side by side */}
+          <div className="mt-5 flex gap-4 items-start">
+            <div className="flex-1 space-y-3">
+              <FeatureCard
+                icon={<CandidateIcon />}
+                iconBg="bg-brand-50"
+                iconColor="text-brand-600"
+                title="For Candidates"
+                desc="Find the right job, showcase your skills and take the next step in your career."
+                titleColor="text-brand-700"
+              />
+              <FeatureCard
+                icon={<CompanyIcon />}
+                iconBg="bg-green-50"
+                iconColor="text-green-600"
+                title="For Recruitment Companies"
+                desc="Find, engage and hire top talent faster with the power of AI."
+                titleColor="text-green-700"
+              />
+            </div>
+            {/* Illustration */}
+            <div className="w-[190px] xl:w-[210px] shrink-0 rounded-2xl bg-white/70 border border-brand-100 h-full min-h-[160px] flex flex-col items-center justify-center gap-2 text-ink-300">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                <rect x="4" y="20" width="26" height="18" rx="3" fill="#e9e2ff"/>
+                <rect x="34" y="24" width="26" height="18" rx="3" fill="#e9e2ff"/>
+                <circle cx="17" cy="14" r="6" fill="#c4b5fd"/>
+                <circle cx="47" cy="18" r="6" fill="#86efac"/>
+                <rect x="8" y="24" width="14" height="2" rx="1" fill="#a78bfa"/>
+                <rect x="8" y="28" width="10" height="2" rx="1" fill="#a78bfa"/>
+                <rect x="38" y="28" width="14" height="2" rx="1" fill="#a78bfa"/>
+                <rect x="38" y="32" width="10" height="2" rx="1" fill="#a78bfa"/>
+                <rect x="10" y="38" width="22" height="3" rx="1.5" fill="#c4b5fd"/>
+                <rect x="32" y="42" width="26" height="3" rx="1.5" fill="#c4b5fd"/>
+              </svg>
+              <span className="text-[11px] text-center px-3">Candidate &amp; Recruiter</span>
+            </div>
           </div>
 
-          <div className="mt-6 flex items-start gap-3 p-4 rounded-xl bg-ink-50 border border-ink-100">
-            <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 shrink-0">
+          <div className="mt-4 flex items-start gap-3 p-3.5 rounded-xl bg-white/60 border border-brand-100">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 shrink-0">
               <ShieldIcon />
             </div>
             <div>
-              <div className="font-semibold text-[14px] text-ink-900">Your data is safe with us</div>
-              <div className="text-[12.5px] text-ink-500 mt-0.5 leading-relaxed">
+              <div className="font-semibold text-[13px] text-ink-900">Your data is safe with us</div>
+              <div className="text-[12px] text-ink-500 mt-0.5 leading-relaxed">
                 We use advanced security measures to protect your information and privacy.
               </div>
-            </div>
-          </div>
-
-          {/* Illustration placeholder */}
-          <div className="mt-8 rounded-2xl bg-brand-50/60 border border-brand-100 h-[200px] flex items-center justify-center">
-            <div className="text-center text-ink-400">
-              <div className="text-[40px]">👥</div>
-              <div className="text-[12px] mt-1">Illustration: Candidate &amp; Recruiter</div>
             </div>
           </div>
         </div>
 
         {/* Right: login card */}
-        <div className="flex items-center justify-center p-6 lg:p-12 xl:p-16 bg-[#F8F7FF] min-h-screen lg:min-h-0 lg:h-full">
-          <div className="w-full max-w-[480px] bg-white rounded-2xl shadow-[0_8px_40px_-8px_rgba(109,76,255,0.18)] border border-ink-100 p-8">
-            <h2 className="font-display font-extrabold text-[24px] text-ink-900 text-center">
+        <div className="flex items-center justify-center p-6 lg:p-6 xl:p-8 min-h-0">
+          <div className="w-full max-w-[460px] bg-white rounded-2xl shadow-[0_8px_40px_-8px_rgba(109,76,255,0.22)] border border-brand-100 p-6">
+            <h2 className="font-display font-extrabold text-[22px] text-ink-900 text-center">
               Login to your account
             </h2>
-            <p className="mt-1.5 text-ink-500 text-[13.5px] text-center">
+            <p className="mt-1 text-ink-500 text-[13px] text-center">
               Please choose your account type to continue
             </p>
 
             {/* Role selector */}
-            <div className="grid grid-cols-2 gap-3 mt-6">
+            <div className="grid grid-cols-2 gap-3 mt-4">
               {(["candidate", "recruiter"] as UserRole[]).map((r) => {
                 const isCand = r === "candidate";
                 const selected = role === r;
@@ -145,20 +134,17 @@ export default function LoginPage() {
                     key={r}
                     type="button"
                     onClick={() => setRole(r)}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition text-left ${
+                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border-2 transition text-left ${
                       selected ? "border-brand-500 bg-brand-50/40" : "border-ink-200 bg-white hover:border-ink-300"
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isCand ? "bg-brand-100 text-brand-600" : "bg-green-100 text-green-600"}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCand ? "bg-brand-100 text-brand-600" : "bg-green-100 text-green-600"}`}>
                       {isCand ? <CandidateIcon /> : <CompanyIcon />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-[13px] text-ink-900 leading-tight">
+                      <div className="font-semibold text-[12.5px] text-ink-900 leading-tight">
                         {isCand ? "Candidate" : "Recruitment Company"}
                       </div>
-                    </div>
-                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${selected ? "border-brand-500" : "border-ink-300"}`}>
-                      {selected && <div className="w-2 h-2 rounded-full bg-brand-500" />}
                     </div>
                   </button>
                 );
@@ -166,15 +152,15 @@ export default function LoginPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4" noValidate>
+            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3" noValidate>
               {submitError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px]">
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px]">
                   {submitError}
                 </div>
               )}
 
               <div>
-                <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
+                <label className="block text-[12.5px] font-semibold text-ink-700 mb-1">
                   Email Address <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -186,7 +172,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: "" })); }}
                     placeholder="Enter your email address"
-                    className={`w-full pl-10 pr-4 py-3 rounded-xl border text-[14px] outline-none transition bg-white ${
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-[13.5px] outline-none transition bg-white ${
                       errors.email ? "border-red-400 focus:ring-2 focus:ring-red-100" : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                     }`}
                   />
@@ -195,11 +181,11 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[13px] font-semibold text-ink-700">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[12.5px] font-semibold text-ink-700">
                     Password <span className="text-red-500">*</span>
                   </label>
-                  <Link href="/forgot-password" className="text-[13px] text-brand-600 hover:text-brand-700 font-medium">
+                  <Link href="/forgot-password" className="text-[12.5px] text-brand-600 hover:text-brand-700 font-medium">
                     Forgot Password?
                   </Link>
                 </div>
@@ -210,7 +196,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: "" })); }}
                     placeholder="Enter your password"
-                    className={`w-full pl-10 pr-12 py-3 rounded-xl border text-[14px] outline-none transition bg-white ${
+                    className={`w-full pl-10 pr-12 py-2.5 rounded-xl border text-[13.5px] outline-none transition bg-white ${
                       errors.password ? "border-red-400 focus:ring-2 focus:ring-red-100" : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                     }`}
                   />
@@ -226,7 +212,7 @@ export default function LoginPage() {
                   <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 rounded accent-brand-600" />
                   <span className="text-[13px] text-ink-700">Remember me</span>
                 </label>
-                <span className="text-[12.5px] text-ink-400 flex items-center gap-1">
+                <span className="text-[12px] text-ink-400 flex items-center gap-1">
                   Keep me signed in
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.6"/><path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                 </span>
@@ -235,33 +221,34 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl text-white font-bold text-[15px] transition hover:opacity-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl text-white font-bold text-[14.5px] transition hover:opacity-95 disabled:opacity-60 flex items-center justify-center gap-2"
                 style={{ background: "var(--gradient-brand)" }}
               >
                 {loading ? <><SpinnerIcon /> Signing in...</> : <>Login <ArrowRightIcon /></>}
               </button>
             </form>
 
-            <div className="my-4 flex items-center gap-3">
+            <div className="my-3 flex items-center gap-3">
               <div className="flex-1 h-px bg-ink-200" />
-              <span className="text-[12.5px] text-ink-400 font-medium">or continue with</span>
+              <span className="text-[12px] text-ink-400 font-medium">or continue with</span>
               <div className="flex-1 h-px bg-ink-200" />
             </div>
 
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-4 gap-2">
               {[
                 { name: "Google",    icon: <GoogleIcon /> },
                 { name: "Microsoft", icon: <MicrosoftIcon /> },
                 { name: "LinkedIn",  icon: <LinkedInIcon /> },
                 { name: "Apple",     icon: <AppleIcon /> },
               ].map((s) => (
-                <button key={s.name} type="button" title={s.name} className="flex items-center justify-center py-2.5 rounded-xl border border-ink-200 hover:bg-ink-50 transition">
+                <button key={s.name} type="button" className="flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl border border-ink-200 bg-white hover:bg-ink-50 transition">
                   {s.icon}
+                  <span className="text-[12px] font-medium text-ink-700">{s.name}</span>
                 </button>
               ))}
             </div>
 
-            <p className="mt-6 text-center text-[13.5px] text-ink-500">
+            <p className="mt-4 text-center text-[13px] text-ink-500">
               Don&apos;t have an account?{" "}
               <Link href="/signup" className="text-brand-600 font-bold hover:text-brand-700">
                 Create one
@@ -272,8 +259,8 @@ export default function LoginPage() {
       </main>
 
       {/* ── Stats strip ── */}
-      <div className="border-t border-ink-100 bg-white">
-        <div className="mx-auto max-w-[1000px] px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="bg-white border-t border-ink-100 shrink-0">
+        <div className="mx-auto max-w-[1000px] px-6 py-3 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { value: "500K+", label: "Active Users",      icon: "🛡" },
             { value: "10K+",  label: "Trusted Companies", icon: "🏢" },
@@ -281,10 +268,10 @@ export default function LoginPage() {
             { value: "98%",   label: "Success Rate",      icon: "🏆" },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center text-[18px] shrink-0">{s.icon}</div>
+              <div className="w-9 h-9 rounded-full bg-brand-50 flex items-center justify-center text-[16px] shrink-0">{s.icon}</div>
               <div>
-                <div className="font-display font-extrabold text-[20px] text-ink-900 leading-none">{s.value}</div>
-                <div className="text-[12px] text-ink-500 mt-0.5">{s.label}</div>
+                <div className="font-display font-extrabold text-[18px] text-ink-900 leading-none">{s.value}</div>
+                <div className="text-[11px] text-ink-500 mt-0.5">{s.label}</div>
               </div>
             </div>
           ))}
@@ -292,8 +279,8 @@ export default function LoginPage() {
       </div>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-ink-100 bg-white py-4">
-        <div className="text-center text-[13px] text-ink-500 space-x-1">
+      <footer className="border-t border-ink-100 bg-white py-2.5 shrink-0">
+        <div className="text-center text-[12.5px] text-ink-500 space-x-1">
           <span>© 2024 AI HRMS. All rights reserved.</span>
           <span className="text-ink-300">|</span>
           <Link href="/terms" className="hover:text-ink-700 transition">Terms &amp; Conditions</Link>
@@ -324,8 +311,26 @@ function FeatureCard({ icon, iconBg, iconColor, title, desc, titleColor }: {
 }
 
 /* ── Icons ── */
-function CandidateIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.7"/><path d="M4 20c0-4 3.5-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>; }
-function CompanyIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="1.5" stroke="currentColor" strokeWidth="1.7"/><path d="M8 9h2M14 9h2M8 13h2M14 13h2M8 17h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>; }
+function CandidateIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="7" r="4" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M3 21c0-3.866 4.029-7 9-7s9 3.134 9 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function CompanyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M2 9h20" stroke="currentColor" strokeWidth="1.6"/>
+      <rect x="6" y="13" width="3" height="3" rx="0.5" fill="currentColor" fillOpacity="0.5"/>
+      <rect x="10.5" y="13" width="3" height="3" rx="0.5" fill="currentColor" fillOpacity="0.5"/>
+      <rect x="15" y="13" width="3" height="3" rx="0.5" fill="currentColor" fillOpacity="0.5"/>
+      <rect x="8" y="17" width="8" height="4" rx="0.5" fill="currentColor" fillOpacity="0.3"/>
+    </svg>
+  );
+}
 function ShieldIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l8 4v6c0 4-3 7-8 8-5-1-8-4-8-8V7l8-4z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
 function MailIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6"/></svg>; }
 function LockIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>; }
@@ -337,3 +342,4 @@ function GoogleIcon() { return <svg width="18" height="18" viewBox="0 0 24 24"><
 function MicrosoftIcon() { return <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>; }
 function LinkedInIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="#0A66C2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>; }
 function AppleIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="#000"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>; }
+function CreateAccountIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6"/><path d="M3 21c0-4 4-7 9-7s9 3 9 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>; }

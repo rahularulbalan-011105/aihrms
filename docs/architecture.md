@@ -67,6 +67,47 @@ HireMind is an AI-powered recruitment platform. The `hiremind_web` app is built 
 
 ---
 
+## Part 2b — Component Standards
+
+### Images
+- Always use **`next/image`** (`import Image from "next/image"`). Never use raw `<img>` tags — they skip optimisation, lazy loading, and LCP hints.
+- For logos with fixed height and fluid width: `<Image src="…" height={h} width={w} style={{ width: "auto" }} priority />`
+
+### Navigation
+- Use **`<Link href="…">`** for all in-app navigation, including CTA buttons styled as links. Never call `router.push()` for simple navigation — it forces a Client Component unnecessarily.
+
+### Inline styles
+- **No `style={{ … }}` props** for design values. Use Tailwind classes or named CSS utilities in `globals.css`.
+- Gradient buttons: use `.btn-gradient-brand` or `.btn-gradient-company` (defined in `globals.css`).
+
+### Server vs Client Components
+- **Default: Server Component** — no `"use client"` unless the component uses hooks (`useState`, `useEffect`), browser APIs, or event handlers that cannot be lifted.
+- Avoid `useRouter` just for navigation — replace with `<Link>` and keep the component a Server Component.
+
+### Component extraction
+- Reusable UI units (e.g. `RoleCard`) live in a **subfolder** of the module they belong to: `modules/auth/components/role-selection/RoleCard.tsx`.
+- A module file that exceeds ~150 lines should be split: extract sub-components into the module subfolder, keep the page file as a thin orchestrator.
+
+### Layout & scroll rules
+- Full-page auth/registration screens use `h-screen flex flex-col overflow-hidden` on the root wrapper.
+- Every scrollable region needs **both** `overflow-y-auto` **and** `min-h-0` — without `min-h-0` flex children ignore the parent constraint and overflow.
+- Left sidebars on registration pages: `overflow-y-auto min-h-0` so features + trust badge remain reachable even on small screens.
+- Avoid `max-w-[…]` on the right form panel — let it fill available space with `flex-1`.
+- Form card padding: `p-4 lg:p-5`. Field grid gap: `gap-3`. Input vertical: `py-2`. Section gaps: `mt-3`.
+
+### Shared auth components (modules/auth/components/)
+| File | Purpose |
+|---|---|
+| `AuthHeader.tsx` | Sticky/non-sticky header; props: `cta`, `border`, `sticky`, `preCtaText` |
+| `AuthStepper.tsx` | Top-level N-step progress indicator; props: `steps[]`, `activeStep` |
+| `role-selection/RoleCard.tsx` | Left-illustration + right-content card with full-width CTA |
+| `role-selection/AIPlatformStrip.tsx` | AI feature pills strip |
+| `role-selection/TrustStrip.tsx` | Company logo trust bar |
+| `candidate-reg/SidebarFeatures.tsx` | Step-1 sidebar feature list + trust badge |
+| `candidate-reg/SidebarProgress.tsx` | Steps 2-4 sidebar: progress bar, tips, help |
+
+---
+
 ## Part 3 — Folder Structure
 
 ```
