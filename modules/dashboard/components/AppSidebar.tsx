@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { useState, useEffect } from "react";
-import { getStoredUserName, getStoredJobTitle } from "@/lib/api/config";
-import { fetchCandidateProfile, type CandidateProfile } from "@/modules/auth/services/candidate.service";
+import { useState } from "react";
+import { useProfile } from "@/modules/dashboard/context/ProfileContext";
 
 function DashboardIcon({ active }: { active: boolean }) {
   return (
@@ -47,73 +46,73 @@ const NAV_ITEMS = [
 ];
 
 const PROFILE_STRENGTH_PCT = 100;
-const RING_R = 36;
+const RING_R = 22; // fits inside 56×56 viewBox (cx=cy=28, r=22 leaves 6px margin)
 const RING_C = 2 * Math.PI * RING_R;
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [profile, setProfile] = useState<CandidateProfile | null>(null);
-
-  useEffect(() => {
-    const name = getStoredUserName();
-    const title = getStoredJobTitle();
-    if (name) {
-      setProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: title, profilePicture: null });
-    }
-    fetchCandidateProfile().then(setProfile).catch(() => null);
-  }, []);
+  const { profile } = useProfile();
 
   const sidebarContent = (
     <div className="h-full flex flex-col">
       {/* Profile */}
       <div className="px-5 py-5 border-b border-ink-100 shrink-0">
-        <div className="flex flex-col items-center text-center">
-          {/* Avatar with progress ring */}
-          <div className="relative w-20 h-20">
-            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r={RING_R} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+        {/* Avatar left · Name/role right */}
+        <div className="flex items-center gap-3">
+          <div className="w-[56px] h-[56px] shrink-0 rounded-full overflow-hidden bg-ink-100 ring-[3px] ring-brand-500 ring-offset-2 flex items-center justify-center text-brand-700 font-bold text-[18px]">
+            {profile?.profilePicture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+            ) : profile?.fullName ? (
+              profile.fullName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+            ) : (
+              <Image src="/images/candidate.png" alt="Profile" fill className="object-cover" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="font-display font-bold text-[14.5px] text-ink-900 truncate">
+              {profile?.fullName ?? "—"}
+            </div>
+            <div className="text-[12px] text-ink-500 mt-0.5 truncate">
+              {profile?.jobTitle ?? "Candidate"}
+            </div>
+          </div>
+        </div>
+
+        {/* Profile strength row: label left, ring right */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#22c55e" stroke="none">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+              </svg>
+              <span className="text-[11.5px] text-ink-500">Profile Strength</span>
+            </div>
+            <span className="text-[12px] font-bold text-green-600 pl-[21px]">Excellent</span>
+          </div>
+
+          {/* Circular progress ring with % inside */}
+          <div className="relative w-14 h-14 shrink-0">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#e5e7eb" strokeWidth="4" />
               <circle
-                cx="40" cy="40" r={RING_R} fill="none" stroke="#5b34f0" strokeWidth="4"
+                cx="28" cy="28" r={RING_R} fill="none" stroke="#5b34f0" strokeWidth="4"
                 strokeDasharray={`${(PROFILE_STRENGTH_PCT / 100) * RING_C} ${RING_C}`}
                 strokeLinecap="round"
               />
             </svg>
-            <div className="absolute inset-[6px] rounded-full overflow-hidden bg-ink-100 flex items-center justify-center text-brand-700 font-bold text-[16px]">
-              {profile?.profilePicture ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.profilePicture} alt="Profile" className="w-full h-full object-cover" />
-              ) : profile?.fullName ? (
-                profile.fullName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
-              ) : (
-                <Image src="/images/candidate.png" alt="Profile" fill className="object-cover" />
-              )}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-display font-extrabold text-[13px] text-brand-700">
+                {PROFILE_STRENGTH_PCT}%
+              </span>
             </div>
           </div>
-
-          <div className="mt-3 font-display font-bold text-[15px] text-ink-900">
-            {profile?.fullName ?? "—"}
-          </div>
-          <div className="text-[12.5px] text-ink-500 mt-0.5">
-            {profile?.jobTitle ?? "Candidate"}
-          </div>
-
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#22c55e" stroke="none">
-              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-            </svg>
-            <span className="text-[11.5px] text-ink-500">Profile Strength</span>
-            <span className="text-[11.5px] font-bold text-green-600">Excellent</span>
-          </div>
-
-          <div className="mt-1.5 font-display font-extrabold text-[28px] text-brand-700 leading-none">
-            {PROFILE_STRENGTH_PCT}%
-          </div>
-
-          <Link href="/profile" className="mt-1.5 text-[12.5px] text-brand-600 font-semibold flex items-center gap-1 hover:text-brand-800 transition">
-            View Profile <span aria-hidden>→</span>
-          </Link>
         </div>
+
+        <Link href="/profile" className="mt-3 flex items-center gap-1 text-[12.5px] text-brand-600 font-semibold hover:text-brand-800 transition">
+          View Profile <span aria-hidden>→</span>
+        </Link>
       </div>
 
       {/* Nav */}

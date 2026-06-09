@@ -52,9 +52,9 @@ export interface CandidateProfile {
   profilePicture:  string | null;
 }
 
-/** GET /profile/basic-info — returns the logged-in candidate's profile */
+/** GET /profile — returns the logged-in candidate's full profile */
 export async function fetchCandidateProfile(): Promise<CandidateProfile> {
-  const res = await authedFetch("/profile/basic-info");
+  const res = await authedFetch("/profile");
   const profile = await handleResponse<CandidateProfile>(res);
   // Keep localStorage in sync for instant display on next load
   if (profile.fullName) setStoredUserName(profile.fullName);

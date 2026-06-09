@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
-import { clearAuth, getStoredUserName } from "@/lib/api/config";
-import { fetchCandidateProfile, type CandidateProfile } from "@/modules/auth/services/candidate.service";
+import { clearAuth } from "@/lib/api/config";
+import { useProfile } from "@/modules/dashboard/context/ProfileContext";
+import type { CandidateProfile } from "@/modules/auth/services/candidate.service";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -132,24 +133,17 @@ function UserMenu({ profile, onLogout }: UserMenuProps) {
 
 export default function AppHeader() {
   const router = useRouter();
-  const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const { profile } = useProfile();
 
-  useEffect(() => {
-    // Seed from localStorage first (synchronous, client-only)
-    const name = getStoredUserName();
-    if (name) {
-      setProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: null, profilePicture: null });
-    }
-    // Then hydrate from API
-    fetchCandidateProfile().then(setProfile).catch(() => null);
-  }, []);
+  // Must be state — timeGreeting() uses Date, differs between server & client
+  const [greeting, setGreeting] = useState("");
+  useEffect(() => { setGreeting(timeGreeting()); }, []);
 
   function handleLogout() {
     clearAuth();
     router.push("/login");
   }
 
-  const greeting = timeGreeting();
   const firstName = profile?.fullName?.split(" ")[0] ?? "there";
 
   return (
@@ -165,8 +159,8 @@ export default function AppHeader() {
       {/* ── Greeting + actions ── */}
       <div className="flex-1 flex items-center justify-between px-8 h-[72px]">
         <div>
-          <h1 className="font-display font-extrabold text-[22px] text-ink-900 leading-tight">
-            {greeting}, {firstName}!{" "}
+          <h1 className="font-display font-extrabold text-[22px] text-ink-900 leading-tight" suppressHydrationWarning>
+            {greeting ? `${greeting}, ${firstName}!` : " "}{" "}
             <span role="img" aria-label="wave">👋</span>
           </h1>
           <p className="text-[13.5px] text-ink-500 mt-0.5">
