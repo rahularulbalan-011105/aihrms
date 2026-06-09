@@ -1,4 +1,4 @@
-import { API, getAccessToken } from "@/lib/api/config";
+import { API, getAccessToken, setStoredUserName, setStoredJobTitle } from "@/lib/api/config";
 import type { CandidateRegStep1Data } from "../types/auth.types";
 
 /* ── helpers ── */
@@ -43,6 +43,24 @@ export async function fetchEducationTypes(): Promise<EducationTypeItem[]> {
 }
 
 /* ── Basic Info ── */
+
+export interface CandidateProfile {
+  fullName:        string;
+  currentLocation: string | null;
+  phoneNumber:     string | null;
+  jobTitle:        string | null;
+  profilePicture:  string | null;
+}
+
+/** GET /profile/basic-info — returns the logged-in candidate's profile */
+export async function fetchCandidateProfile(): Promise<CandidateProfile> {
+  const res = await authedFetch("/profile/basic-info");
+  const profile = await handleResponse<CandidateProfile>(res);
+  // Keep localStorage in sync for instant display on next load
+  if (profile.fullName) setStoredUserName(profile.fullName);
+  if (profile.jobTitle) setStoredJobTitle(profile.jobTitle);
+  return profile;
+}
 
 /** PUT /profile/basic-info */
 export async function updateCandidateBasicInfo(data: CandidateRegStep1Data): Promise<void> {

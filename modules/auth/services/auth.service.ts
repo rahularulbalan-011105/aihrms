@@ -1,4 +1,4 @@
-import { API, getAccessToken, setAccessToken, clearAuth } from "@/lib/api/config";
+import { API, getAccessToken, setAccessToken, clearAuth, setStoredUserName } from "@/lib/api/config";
 import type { LoginPayload, SignupPayload, AuthUser, CandidateRegStep1Data } from '../types/auth.types';
 
 /** DELETE /users/me — rollback user account if downstream registration fails */
@@ -90,6 +90,7 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
   setAccessToken(accessToken);
   localStorage.setItem("hiremind_refresh_token", refreshToken);
   localStorage.setItem("hiremind_user_id", userId);
+  setStoredUserName(body.fullName); // cache name for immediate header display
   return userId as string;
 }
 

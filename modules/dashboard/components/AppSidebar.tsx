@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getStoredUserName, getStoredJobTitle } from "@/lib/api/config";
+import { fetchCandidateProfile, type CandidateProfile } from "@/modules/auth/services/candidate.service";
 
 function DashboardIcon({ active }: { active: boolean }) {
   return (
@@ -51,16 +53,19 @@ const RING_C = 2 * Math.PI * RING_R;
 export default function AppSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
+
+  useEffect(() => {
+    const name = getStoredUserName();
+    const title = getStoredJobTitle();
+    if (name) {
+      setProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: title, profilePicture: null });
+    }
+    fetchCandidateProfile().then(setProfile).catch(() => null);
+  }, []);
 
   const sidebarContent = (
     <div className="h-full flex flex-col">
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-ink-100 shrink-0">
-        <Link href="/" onClick={() => setMobileOpen(false)}>
-          <Image src="/logo.png" alt="HireMind" width={110} height={40} style={{ height: 40, width: "auto" }} priority />
-        </Link>
-      </div>
-
       {/* Profile */}
       <div className="px-5 py-5 border-b border-ink-100 shrink-0">
         <div className="flex flex-col items-center text-center">
@@ -74,13 +79,24 @@ export default function AppSidebar() {
                 strokeLinecap="round"
               />
             </svg>
-            <div className="absolute inset-[6px] rounded-full overflow-hidden bg-ink-100">
-              <Image src="/images/candidate.png" alt="Profile" fill className="object-cover" />
+            <div className="absolute inset-[6px] rounded-full overflow-hidden bg-ink-100 flex items-center justify-center text-brand-700 font-bold text-[16px]">
+              {profile?.profilePicture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+              ) : profile?.fullName ? (
+                profile.fullName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+              ) : (
+                <Image src="/images/candidate.png" alt="Profile" fill className="object-cover" />
+              )}
             </div>
           </div>
 
-          <div className="mt-3 font-display font-bold text-[15px] text-ink-900">Rahul Sharma</div>
-          <div className="text-[12.5px] text-ink-500 mt-0.5">Software Engineer</div>
+          <div className="mt-3 font-display font-bold text-[15px] text-ink-900">
+            {profile?.fullName ?? "—"}
+          </div>
+          <div className="text-[12.5px] text-ink-500 mt-0.5">
+            {profile?.jobTitle ?? "Candidate"}
+          </div>
 
           <div className="mt-2.5 flex items-center gap-1.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#22c55e" stroke="none">

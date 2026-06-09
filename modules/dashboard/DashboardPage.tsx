@@ -101,16 +101,6 @@ export default function DashboardPage() {
     <div className="flex gap-6 items-start">
       {/* ── Centre column ── */}
       <div className="flex-1 min-w-0 space-y-5">
-        {/* Greeting */}
-        <div>
-          <h1 className="font-display font-extrabold text-[24px] text-ink-900">
-            Good morning, Rahul! <span role="img" aria-label="wave">👋</span>
-          </h1>
-          <p className="text-[14px] text-ink-500 mt-1">
-            Find the right opportunity that matches your skills and aspirations.
-          </p>
-        </div>
-
         {/* Stats grid */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {STATS.map((stat) => (
@@ -119,22 +109,22 @@ export default function DashboardPage() {
         </div>
 
         {/* Job search bar */}
-        <div className="card p-3 flex flex-col sm:flex-row gap-2">
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-ink-100/60 rounded-xl">
+        <div className="card p-3 flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-[160px] px-3 py-2 bg-ink-100/60 rounded-xl">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-            <input type="text" placeholder="Job title, keywords or company" className="flex-1 bg-transparent text-[13.5px] text-ink-700 placeholder:text-ink-400 outline-none" />
+            <input type="text" placeholder="Job title, keywords or company" className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink-700 placeholder:text-ink-400 outline-none" />
           </div>
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-ink-100/60 rounded-xl">
+          <div className="flex items-center gap-2 flex-1 min-w-[120px] px-3 py-2 bg-ink-100/60 rounded-xl">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-            <input type="text" placeholder="Location" className="flex-1 bg-transparent text-[13.5px] text-ink-700 placeholder:text-ink-400 outline-none" />
+            <input type="text" placeholder="Location" className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink-700 placeholder:text-ink-400 outline-none" />
           </div>
-          <select className="px-3 py-2 bg-ink-100/60 rounded-xl text-[13.5px] text-ink-600 outline-none border-0 cursor-pointer">
+          <select className="flex-1 min-w-[140px] px-3 py-2 bg-ink-100/60 rounded-xl text-[13.5px] text-ink-600 outline-none border-0 cursor-pointer">
             <option>Experience Level</option>
             <option>Entry Level</option>
             <option>Mid Level</option>
             <option>Senior Level</option>
           </select>
-          <button className="px-5 py-2.5 rounded-xl text-white text-[13.5px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity whitespace-nowrap">
+          <button className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-white text-[13.5px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity whitespace-nowrap">
             Search Jobs
           </button>
         </div>
