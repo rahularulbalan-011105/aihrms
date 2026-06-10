@@ -1,6 +1,6 @@
 import Image from "next/image";
-import SidebarFeatures from "./SidebarFeatures";
-import SidebarProgress from "./SidebarProgress";
+import SidebarFeatures from "./sections/SidebarFeatures";
+import SidebarProgress from "./sections/SidebarProgress";
 
 const STEP_MESSAGES = [
   { heading: "Start Your Career Journey", sub: "with HireMind",  desc: "Create your profile, get discovered by top recruiters and find the right opportunities faster with AI." },

@@ -29,7 +29,11 @@ export interface Education {
   degree: string;
   institution: string;
   specialization: string;
+  location: string;
   yearOfPassing: string;
+  grade: string;
+  educationType: string;
+  description: string;
 }
 
 export interface Project {
@@ -62,14 +66,25 @@ export interface Certification {
   id: string;
   name: string;
   institution: string;
+  credentialId?: string;
+  certificateUrl?: string;
   passedYear: string;
   validTill: string;
+  doesNotExpire: boolean;
+  description?: string;
+  displayOnProfile: boolean;
 }
 
 export interface Skill {
   id: string;
   name: string;
-  highlighted: boolean;
+  proficiency: string;       // Beginner | Intermediate | Advanced | Expert | Master
+  experienceValue: string;   // "5"
+  experienceUnit: string;    // "Years" | "Months"
+  lastUsed: string;          // "May 2024"
+  yearsOfExperience: number; // 0–10 (slider)
+  highlighted: boolean;      // Top Skill
+  additionalDetails?: string;
 }
 
 export interface CandidateRegStep1Data {

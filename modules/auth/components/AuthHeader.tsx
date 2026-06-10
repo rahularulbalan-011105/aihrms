@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import BrandLogo from "@/components/marketing/BrandLogo";
 
 interface AuthHeaderCta {
   label: string;
@@ -25,9 +25,9 @@ export default function AuthHeader({
 }: AuthHeaderProps) {
   return (
     <header className={`shrink-0 bg-white ${border ? "border-b border-ink-100" : ""} ${sticky ? "sticky top-0 z-20" : ""}`}>
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-2 flex items-center justify-between">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 h-[72px] flex items-center justify-between">
         <Link href="/">
-          <Image src="/logo.png" alt="HireMind" height={44} width={66} style={{ height: "44px", width: "auto" }} priority />
+          <BrandLogo size="md" />
         </Link>
         <div className="flex items-center gap-3">
           {preCtaText && (
