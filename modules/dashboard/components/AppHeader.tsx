@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
-import { clearAuth } from "@/lib/api/config";
+import { clearAuth, getStoredUserName, getStoredJobTitle } from "@/lib/api/config";
 import { useProfile } from "@/modules/dashboard/context/ProfileContext";
 import type { CandidateProfile } from "@/modules/auth/services/candidate.service";
 
@@ -133,7 +133,20 @@ function UserMenu({ profile, onLogout }: UserMenuProps) {
 
 export default function AppHeader() {
   const router = useRouter();
-  const { profile } = useProfile();
+  const { profile: contextProfile } = useProfile();
+
+  // Fallback: when AppHeader is used without ProfileProvider (e.g. (app-wide) layout),
+  // read stored values from localStorage so the header still shows the user's name.
+  const [localProfile, setLocalProfile] = useState<CandidateProfile | null>(null);
+  useEffect(() => {
+    if (!contextProfile) {
+      const name = getStoredUserName();
+      const title = getStoredJobTitle();
+      if (name) setLocalProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: title, profilePicture: null });
+    }
+  }, [contextProfile]);
+
+  const profile = contextProfile ?? localProfile;
 
   // Must be state — timeGreeting() uses Date, differs between server & client
   const [greeting, setGreeting] = useState("");

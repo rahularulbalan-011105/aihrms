@@ -1,19 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { NOTICE_OPTIONS, SALARY_OPTIONS, SALARY_TYPE, LOCATION_OPTIONS, BENEFIT_OPTIONS } from "../shared/constants";
+import { useState, useEffect } from "react";
+import { NOTICE_OPTIONS, SALARY_OPTIONS, SALARY_TYPE, LOCATION_OPTIONS, BENEFIT_OPTIONS, EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES } from "../shared/constants";
 import { SelectField } from "../shared/ui";
 import { PrefsIcon } from "../shared/icons";
 import type { PreferencesData } from "../shared/types";
+import { fetchEmploymentTypes } from "../../../services/candidate.service";
 
 interface Props {
   data: PreferencesData;
   onChange: (data: PreferencesData) => void;
 }
 
+/** { label: "Full Time", enumName: "FULL_TIME" } */
+interface EmpTypeOption { label: string; enumName: string; }
+
+const toLabel = (s: string) => s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Fallback built from hardcoded constants
+const FALLBACK_EMP_OPTIONS: EmpTypeOption[] = EMPLOYMENT_TYPES.map((label) => ({
+  label,
+  enumName: EMPLOYMENT_TYPE_MAP[label] ?? label.toUpperCase().replace(/ /g, "_"),
+}));
+
 export default function PreferencesSection({ data, onChange }: Props) {
   const [pref, setPref]         = useState<PreferencesData>(data);
   const [roleInput, setRoleInput] = useState("");
+  const [empOptions, setEmpOptions] = useState<EmpTypeOption[]>(FALLBACK_EMP_OPTIONS);
+
+  useEffect(() => {
+    fetchEmploymentTypes()
+      .then((items) => {
+        if (!items.length) return;
+        setEmpOptions(items.map((i) => ({ label: toLabel(i.name), enumName: i.name })));
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
 
   const set = <K extends keyof PreferencesData>(key: K, value: PreferencesData[K]) => {
     const next = { ...pref, [key]: value };
@@ -90,10 +112,10 @@ export default function PreferencesSection({ data, onChange }: Props) {
         <div>
           <label className="block text-[13px] font-semibold text-ink-700 mb-2.5">Preferred Employment Type</label>
           <div className="flex flex-wrap gap-4">
-            {["Full Time","Contract","Remote","Hybrid"].map(t => (
-              <label key={t} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={pref.employmentTypes.includes(t)} onChange={() => toggle("employmentTypes", t)} className="w-4 h-4 rounded accent-brand-600" />
-                <span className="text-[13.5px] text-ink-700">{t}</span>
+            {empOptions.map(({ label, enumName }) => (
+              <label key={enumName} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={pref.employmentTypes.includes(enumName)} onChange={() => toggle("employmentTypes", enumName)} className="w-4 h-4 rounded accent-brand-600" />
+                <span className="text-[13.5px] text-ink-700">{label}</span>
               </label>
             ))}
           </div>

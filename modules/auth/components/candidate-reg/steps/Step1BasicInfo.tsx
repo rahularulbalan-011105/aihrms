@@ -184,13 +184,6 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
         )}
       </div>
 
-      {/* API error */}
-      {apiError && (
-        <div className="mt-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-600 flex items-start gap-2">
-          <span className="shrink-0 mt-0.5">⚠</span>{apiError}
-        </div>
-      )}
-
       <div className="my-5 flex items-center gap-3">
         <div className="flex-1 h-px bg-ink-200" />
         <span className="text-[12.5px] text-ink-400 font-medium">OR</span>
@@ -211,6 +204,14 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
       <p className="mt-3 text-center text-[12.5px] text-ink-500 flex items-center justify-center gap-1.5">
         <LockIcon /> Your information is safe with us. We never share your data.
       </p>
+
+      {/* API error */}
+      {apiError && (
+        <div className="mt-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-[13px] text-red-600 flex items-start gap-2">
+          <span className="shrink-0 mt-0.5">⚠</span>{apiError}
+        </div>
+      )}
+
     </div>
   );
 }

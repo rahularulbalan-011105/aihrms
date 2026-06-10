@@ -70,6 +70,16 @@ The `.devcontainer/` folder has `devcontainer.json` + `Dockerfile` (Node 20 / De
 
 Both services are Spring Boot (Maven) apps running inside Docker containers with **host network mode**.
 PostgreSQL runs on port 5432, Redis on port 6379.
+Shared library: `/Users/femilam/Project/backend/hiremind/core_module` — `ApiResponse<T>` record and common utilities.
+
+### Master Data Endpoints (candidate_api — public, no auth)
+| Endpoint | Controller method | Source |
+|---|---|---|
+| `GET /master/degrees` | `getDegrees()` | `degree_courses` table (DB-backed) |
+| `GET /master/education-types` | `getEducationTypes()` | `education_types` table (DB-backed) |
+| `GET /master/employment-types` | `getEmploymentTypes()` | `EmploymentType` enum (no DB needed) |
+
+All return `ApiResponse<List<{name}>>`. Employment types: `FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP, FREELANCE, REMOTE, HYBRID`.
 
 ### CORS — Next.js Proxy Rewrites
 ```
@@ -116,9 +126,12 @@ hiremind_web/
 │   ├── (marketing)/            # Public marketing pages — Header + Footer layout
 │   ├── (auth)/                 # Auth flow — each page owns its full layout
 │   │   └── register/candidate/ # /register/candidate (4-step registration)
-│   ├── (app)/                  # Authenticated app shell
+│   ├── (app)/                  # Authenticated app shell (with sidebar)
 │   │   ├── layout.tsx          # Wraps ProfileProvider + AppHeader + AppSidebar
 │   │   └── dashboard/page.tsx  # Thin wrapper → <DashboardPage />
+│   ├── (app-wide)/             # Authenticated, full-width (no sidebar)
+│   │   ├── layout.tsx          # AppHeader only — no ProfileProvider, no sidebar
+│   │   └── profile/page.tsx    # Thin wrapper → <ProfilePage />
 │   ├── layout.tsx              # Root layout (html, body, fonts only)
 │   └── globals.css             # Tailwind v4 design tokens — do not rename tokens
 │
@@ -141,6 +154,7 @@ hiremind_web/
 │   │
 │   └── dashboard/
 │       ├── DashboardPage.tsx          # "use client" orchestrator — stats, search bar, job tabs, right sidebar
+│       ├── ProfilePage.tsx            # "use client" orchestrator — 3-column profile layout
 │       ├── context/
 │       │   └── ProfileContext.tsx     # Single profile fetch (useRef guard); shared via useProfile()
 │       └── components/
@@ -148,9 +162,13 @@ hiremind_web/
 │           ├── AppSidebar.tsx         # "use client" — left nav, profile card, premium upsell
 │           ├── StatCard.tsx           # Reusable stat tile
 │           ├── JobCard.tsx            # Job listing card with match %, fake/ghost badges
-│           ├── MatchInsightsPanel.tsx # Donut chart (conic-gradient) + legend
+│           ├── MatchInsightsPanel.tsx # Donut chart (conic-gradient) + legend side-by-side
 │           ├── JobAlertsPanel.tsx     # "use client" — toggleable alerts
-│           └── CareerTipsPanel.tsx    # Static career tips list
+│           ├── CareerTipsPanel.tsx    # Static career tips list
+│           └── profile/
+│               ├── ProfileLeftPanel.tsx    # Back link, avatar, contact, strength ring, section nav
+│               ├── ProfileOverviewCard.tsx # 8-field grid + match score donut with progress bars
+│               └── ProfileRightPanel.tsx   # Highlights, key strengths, documents, need help
 │
 ├── docs/
 │   └── architecture.md
@@ -175,6 +193,7 @@ hiremind_web/
 | `/otp` | Email OTP verification | ✅ Built |
 | `/register/candidate` | 4-step candidate registration | ✅ Built + API wired |
 | `/dashboard` | Candidate dashboard | ✅ Built + API wired |
+| `/profile` | Candidate profile overview | ✅ Built + API wired |
 | `/jobs` | Job listings | ⏳ Pending |
 | `/candidates` | Candidate search (recruiter) | ⏳ Pending |
 | `/company` | Company profile | ⏳ Pending |
@@ -188,7 +207,8 @@ hiremind_web/
 ### Route groups
 - `(marketing)` — public pages, uses `Header + Footer` layout
 - `(auth)` — login/register flows, **each page owns its full-page layout**
-- `(app)` — authenticated app shell — wraps `ProfileProvider` → `AppHeader` → `AppSidebar` → `<main>`
+- `(app)` — authenticated shell with sidebar — wraps `ProfileProvider` → `AppHeader` → `AppSidebar` → `<main>`
+- `(app-wide)` — authenticated full-width shell (no sidebar) — `AppHeader` only, **no `ProfileProvider`**; used for `/profile`
 
 ### Header height standard
 All headers across every route group use **`h-[72px]`** and **`BrandLogo size="md"`** (56 px). This applies to:
@@ -196,8 +216,10 @@ All headers across every route group use **`h-[72px]`** and **`BrandLogo size="m
 - `modules/auth/components/AuthHeader.tsx`
 - `modules/dashboard/components/AppHeader.tsx`
 
-### ProfileContext — one fetch, shared everywhere
-`ProfileProvider` in `(app)/layout.tsx` fetches `GET /api/candidate/profile` **once** using a `useRef(false)` guard (prevents React StrictMode double-invoke). All components in the app shell call `useProfile()` — never fetch independently.
+### ProfileContext — one fetch, shared everywhere (dashboard only)
+`ProfileProvider` in `(app)/layout.tsx` fetches `GET /api/candidate/profile` **once** using a `useRef(false)` guard (prevents React StrictMode double-invoke). All components in the `(app)` shell call `useProfile()` — never fetch independently.
+
+The `(app-wide)` layout does **not** use `ProfileProvider`. `AppHeader` falls back to `getStoredUserName()` / `getStoredJobTitle()` from localStorage when no context is present — no extra API call. `ProfilePage` fetches `fetchFullProfile()` independently and passes data to panels as props.
 
 ### SSR / Hydration rules
 Never use time- or environment-dependent values directly in render. They differ between server and client and cause hydration errors:
@@ -226,6 +248,16 @@ Use `@utility` directive in `globals.css` — plain CSS class selectors are NOT 
 ```css
 @utility btn-gradient-brand { background: var(--gradient-brand); }
 ```
+
+### Profile page layout pattern
+`ProfilePage` lives in `(app-wide)` — full width, no AppSidebar. It renders a 3-column layout:
+- **Left panel** (`w-[240px]`) — `ProfileLeftPanel`: back link, avatar, contact, strength ring, section nav. Receives all data as props — does **not** call `useProfile()`.
+- **Centre** (`flex-1`) — overview card, professional summary, experience, education, skills (stacked)
+- **Right panel** (`w-[260px]`) — `ProfileRightPanel`: highlights, key strengths, documents, support
+
+`ProfilePage` uses `fetchFullProfile()` with a `useRef(false)` guard — single API call, StrictMode-safe. Data flows down as props; no context needed.
+
+The in-page section nav in `ProfileLeftPanel` links to sub-routes (`/profile/experience`, `/profile/education`, etc.) — these pages are **pending implementation**.
 
 ### Variable naming
 Use meaningful names — **never** single-letter state variables.
@@ -264,9 +296,10 @@ Tokens in `app/globals.css` (`@theme` syntax — do not rename):
 3. If step 2 fails → `deleteCurrentUser()` → `DELETE /api/users/users/me` (rollback)
 
 ### Candidate Profile API
-- `fetchCandidateProfile()` → `GET /api/candidate/profile` (authed)
+- `fetchCandidateProfile()` → `GET /api/candidate/profile` (authed) — used by `ProfileContext` in `(app)` shell
 - Response mapped to `CandidateProfile`: `fullName`, `jobTitle`, `currentLocation`, `phoneNumber`, `profilePicture`
 - On success: syncs `hiremind_user_name` and `hiremind_job_title` to localStorage
+- `fetchFullProfile()` → same `GET /api/candidate/profile` endpoint — used by `ProfilePage` in `(app-wide)` shell; returns `FullProfile` with all nested arrays (workExperiences, educations, skills, certifications, preferences) plus scalar preference fields (`noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation`, `openToRelocate`, `additionalPreferences`)
 
 ### Auth / Session — 401/403 Handling
 `authedFetch` in `candidate.service.ts` redirects to `/login` on any `401` or `403`. Access token TTL: **1440 min** in dev (`users_api/application.properties`).
@@ -275,7 +308,18 @@ Tokens in `app/globals.css` (`@theme` syntax — do not rename):
 See original detailed docs — APIs unchanged.
 
 ### Step 3 — Skills, Certifications, Preferences
-See original detailed docs — APIs unchanged.
+
+#### Employment Types — dynamic from backend
+Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `GET /api/candidate/master/employment-types` on mount.
+
+- Backend returns `{ data: [{ name: "FULL_TIME" }, ...] }` from `MasterDataController.getEmploymentTypes()`
+- `toLabel()` converts enum names to display labels: `"FULL_TIME"` → `"Full Time"` (must **lowercase first**: `s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())`)
+- Falls back to hardcoded `EMPLOYMENT_TYPE_MAP` / `EMPLOYMENT_TYPES` from `shared/constants.ts` if API fails
+
+#### Employment type storage contract
+- `AddExperienceModal` — stores **display label** (e.g. `"Full Time"`) in form state; maps back to enum name via `typeMap` when building payload
+- `PreferencesSection` — stores **enum name** (e.g. `"FULL_TIME"`) directly in `pref.employmentTypes`; `buildPreferencesPayload` passes them straight to `preferredEmploymentTypes` — **no re-mapping**
+- `Step3Skills` default employment type: `"FULL_TIME"` (enum name, not label)
 
 ### Shared UI Patterns (candidate-reg)
 - **`ConfirmDialog`** — fixed modal, trash icon, cancel + delete with spinner
@@ -293,8 +337,12 @@ See original detailed docs — APIs unchanged.
 - **Do not** hardcode backend ports — use `API.USERS` / `API.CANDIDATE` from `lib/api/config.ts`
 - **Do not** modify Tailwind tokens in `globals.css` without updating `docs/architecture.md`
 - **Do not** use single-letter variable names for React state
-- **Do not** call `fetchCandidateProfile()` directly in components — consume `useProfile()` from `ProfileContext`
+- **Do not** call `fetchCandidateProfile()` directly in components inside `(app)` — consume `useProfile()` from `ProfileContext`
+- **Do not** add `ProfileProvider` to `(app-wide)/layout.tsx` — it causes a duplicate `/profile` API call alongside `fetchFullProfile()` in `ProfilePage`
+- **Do not** call `useProfile()` in `ProfileLeftPanel` — it receives all data as props from `ProfilePage`
 - **Do not** read `localStorage` in `useState` initializers — use `useEffect` instead
+- **Do not** use display labels (e.g. `"Full Time"`) as `preferredEmploymentTypes` payload values — backend expects enum names (`"FULL_TIME"`). Always send enum names to `PUT /profile/preferences`
+- **Do not** use `toLabel()` without lowercasing first — `"FULL_TIME".replace(/_/g," ")` stays ALL CAPS; always call `.toLowerCase()` before title-casing
 
 ---
 
@@ -307,5 +355,6 @@ See original detailed docs — APIs unchanged.
 5. **Middleware** — route protection and RBAC
 6. **Recruiter registration** — `/register/company`
 7. **Dashboard — real data** — replace mock job/stats data with live API calls
-8. **React Query + Zustand** — install after backend integration complete
-9. **ESLint + Prettier** — code quality tooling
+8. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
+9. **React Query + Zustand** — install after backend integration complete
+10. **ESLint + Prettier** — code quality tooling

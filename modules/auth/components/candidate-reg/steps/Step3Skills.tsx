@@ -40,7 +40,7 @@ export default function Step3Skills({ data, onChange, onNext, onBack }: Props) {
     openToRelocate: data.openToRelocate,
     employmentTypes: data.employmentTypes.length
       ? data.employmentTypes
-      : ["Full Time"],
+      : ["FULL_TIME"],
     benefits: data.benefits.length ? data.benefits : [],
     additionalNotes: data.additionalNotes,
   });

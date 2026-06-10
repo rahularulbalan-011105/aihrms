@@ -53,7 +53,7 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
       <div className="space-y-4">
         {/* ── Basic Information ── */}
         <SectionCard icon={<PersonIcon />} iconBg="bg-brand-50" iconColor="text-brand-600"
-          title="Basic Information" onEdit={() => onEditStep(1)}>
+          title="Basic Information">
           <div className="space-y-1">
             <p className="font-bold text-[14.5px] text-ink-900">{fullName}</p>
             <p className="text-[13.5px] text-ink-600">{email}</p>
@@ -201,7 +201,7 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
 /* ── Sub-components ── */
 function SectionCard({ icon, iconBg, iconColor, title, onEdit, children }: {
   icon: React.ReactNode; iconBg: string; iconColor: string;
-  title: string; onEdit: () => void; children: React.ReactNode;
+  title: string; onEdit?: () => void; children: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden">
@@ -210,10 +210,12 @@ function SectionCard({ icon, iconBg, iconColor, title, onEdit, children }: {
           <div className={`w-9 h-9 rounded-full ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>{icon}</div>
           <span className="font-display font-bold text-[15px] text-ink-900">{title}</span>
         </div>
-        <button type="button" onClick={onEdit}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-ink-200 text-[13px] font-semibold text-ink-600 hover:bg-ink-50 hover:border-brand-300 hover:text-brand-600 transition">
-          <EditIcon /> Edit
-        </button>
+        {onEdit && (
+          <button type="button" onClick={onEdit}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-ink-200 text-[13px] font-semibold text-ink-600 hover:bg-ink-50 hover:border-brand-300 hover:text-brand-600 transition">
+            <EditIcon /> Edit
+          </button>
+        )}
       </div>
       <div className="px-5 py-4">{children}</div>
     </div>

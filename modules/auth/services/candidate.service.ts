@@ -42,6 +42,104 @@ export async function fetchEducationTypes(): Promise<EducationTypeItem[]> {
   return (json.data ?? []) as EducationTypeItem[];
 }
 
+export interface EmploymentTypeItem { name: string; }
+
+/** GET /master/employment-types — public, no auth required */
+export async function fetchEmploymentTypes(): Promise<EmploymentTypeItem[]> {
+  const res = await fetch(`${API.CANDIDATE}/master/employment-types`);
+  const json = await res.json().catch(() => ({}));
+  return (json.data ?? []) as EmploymentTypeItem[];
+}
+
+/* ── Full Profile (GET /profile) ── */
+
+export interface ProjectProfile {
+  id: string;
+  projectName: string;
+  roleName: string | null;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  technologiesUsed: string | null;
+}
+
+export interface WorkExperienceProfile {
+  id: string;
+  companyName: string;
+  jobTitle: string;
+  employmentType: string;
+  location: string | null;
+  startDate: string;
+  endDate: string | null;
+  currentlyWorking: boolean;
+  noticePeriod: string | null;
+  projects: ProjectProfile[];
+}
+
+export interface EducationProfile {
+  id: string;
+  degree: string;
+  institution: string;
+  specialization: string | null;
+  location: string | null;
+  yearOfPassing: string | null;
+  grade: string | null;
+  educationType: string | null;
+}
+
+export interface SkillProfile {
+  id: string;
+  skillName: string;
+  proficiencyLevel: string;
+  experienceYears: number | null;
+  topSkill: boolean;
+}
+
+export interface CertificationProfile {
+  id: string;
+  certificationName: string;
+  issuingInstitution: string;
+  passedYear: number | null;
+  validTill: string | null;
+  doesNotExpire: boolean;
+}
+
+export interface PreferenceProfile {
+  id: string;
+  type: string;
+  value: string;
+}
+
+export interface FullProfile {
+  fullName: string;
+  email: string | null;
+  phoneNumber: string | null;
+  currentLocation: string | null;
+  linkedinUrl: string | null;
+  currentRole: string | null;
+  currentCompany: string | null;
+  totalExperienceYears: number | null;
+  profileStrength: number;
+  profileStatus: string;
+  noticePeriod: string | null;
+  expectedSalary: string | null;
+  salaryType: string | null;
+  preferredLocation: string | null;
+  openToRelocate: boolean;
+  additionalPreferences: string | null;
+  workExperiences: WorkExperienceProfile[];
+  educations: EducationProfile[];
+  skills: SkillProfile[];
+  certifications: CertificationProfile[];
+  preferences: PreferenceProfile[];
+}
+
+/** GET /profile — full profile with all nested data */
+export async function fetchFullProfile(): Promise<FullProfile> {
+  const res = await authedFetch("/profile");
+  return handleResponse<FullProfile>(res);
+}
+
 /* ── Basic Info ── */
 
 export interface CandidateProfile {
@@ -202,14 +300,7 @@ export function buildSkillPayload(skill: import("../types/auth.types").Skill): S
 
 /* ── Preferences ── */
 
-const PREF_EMPLOYMENT_MAP: Record<string, string> = {
-  "Full Time": "FULL_TIME",
-  "Part Time": "PART_TIME",
-  "Contract":  "CONTRACT",
-  "Remote":    "REMOTE",
-  "Hybrid":    "HYBRID",
-  "Freelance": "FREELANCE",
-};
+// Employment types are now stored as enum names (e.g. "FULL_TIME") — no re-map needed.
 
 export interface PreferencesPayload {
   noticePeriod?: string;
@@ -250,7 +341,7 @@ export function buildPreferencesPayload(data: {
     preferredLocation:        data.preferredLocation || undefined,
     openToRelocate:           data.openToRelocate,
     rolePreferences:          data.jobRolePreferences.length ? data.jobRolePreferences : undefined,
-    preferredEmploymentTypes: data.employmentTypes.map(t => PREF_EMPLOYMENT_MAP[t] ?? t).filter(Boolean),
+    preferredEmploymentTypes: data.employmentTypes.length ? data.employmentTypes : undefined,
     benefits:                 data.benefits.length ? data.benefits : undefined,
     additionalPreferences:    data.additionalNotes || undefined,
   };

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Experience } from "../../../types/auth.types";
 import {
   addWorkExperience,
   updateWorkExperience,
+  fetchEmploymentTypes,
   type WorkExperiencePayload,
 } from "../../../services/candidate.service";
 import type { ExperienceFormData, ProjectForm } from "../shared/types";
@@ -75,6 +76,26 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Employment types from backend; falls back to hardcoded constants on error
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>(EMPLOYMENT_TYPES);
+  const [typeMap, setTypeMap] = useState<Record<string, string>>(EMPLOYMENT_TYPE_MAP);
+
+  useEffect(() => {
+    fetchEmploymentTypes()
+      .then((items) => {
+        if (!items.length) return;
+        // backend returns e.g. [{ name: "FULL_TIME" }]
+        // Convert to display labels: "FULL_TIME" → "Full Time"
+        const toLabel = (s: string) =>
+          s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        const labels = items.map((i) => toLabel(i.name));
+        const map    = Object.fromEntries(items.map((i) => [toLabel(i.name), i.name]));
+        setEmploymentTypes(labels);
+        setTypeMap(map);
+      })
+      .catch(() => { /* keep hardcoded fallback */ });
+  }, []);
+
   const set = <K extends keyof ExperienceFormData>(k: K, v: ExperienceFormData[K]) => {
     setForm(f => ({ ...f, [k]: v }));
     setErrors(e => ({ ...e, [k]: "" }));
@@ -133,7 +154,7 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
       const payload: WorkExperiencePayload = {
         companyName:      form.company.trim(),
         jobTitle:         form.jobTitle.trim(),
-        employmentType:   EMPLOYMENT_TYPE_MAP[form.employmentType] ?? "FULL_TIME",
+        employmentType:   typeMap[form.employmentType] ?? "FULL_TIME",
         location:         form.location.trim() || undefined,
         startDate:        toLocalDate(form.startDate) ?? form.startDate,
         endDate:          form.isCurrent ? null : (toLocalDate(form.endDate) ?? undefined),
@@ -229,7 +250,7 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
                 <select value={form.employmentType} onChange={e => set("employmentType", e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] text-ink-700 bg-white outline-none appearance-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100">
                   <option value="">Select employment type</option>
-                  {EMPLOYMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {employmentTypes.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"><ChevronDownIcon /></span>
               </div>
