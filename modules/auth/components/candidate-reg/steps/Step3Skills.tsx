@@ -8,6 +8,7 @@ import PreferencesSection from "../sections/PreferencesSection";
 import { deleteCandidateSkill, savePreferences, buildPreferencesPayload } from "../../../services/candidate.service";
 import { PROFICIENCY_DOTS, POPULAR_SKILL_COLORS } from "../shared/constants";
 import { Tooltip, ConfirmDialog, DotsIndicator } from "../shared/ui";
+import { useConfirmDelete } from "../shared/hooks";
 import {
   SkillsIcon,
   SkillsIconLg,
@@ -17,7 +18,7 @@ import {
   ArrowRightIcon,
   SpinnerIcon,
 } from "../shared/icons";
-import type { ConfirmState, PreferencesData } from "../shared/types";
+import type { PreferencesData } from "../shared/types";
 
 interface Props {
   data: CandidateRegStep3Data;
@@ -49,20 +50,13 @@ export default function Step3Skills({ data, onChange, onNext, onBack }: Props) {
     open: boolean;
     editSkill?: Skill;
   }>({ open: false });
-  const [confirm, setConfirm] = useState<ConfirmState>({
-    open: false,
-    label: "",
-    onConfirm: async () => {},
-  });
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [isSaving,        setIsSaving]        = useState(false);
   const [saveError,       setSaveError]       = useState<string | null>(null);
 
-  const confirmDelete = (label: string, action: () => Promise<void>) =>
-    setConfirm({ open: true, label, onConfirm: action });
-
   const handleDeleteSkill = async (id: string) => {
-    setConfirm({ open: false, label: "", onConfirm: async () => {} });
+    resetConfirm();
     setDeletingSkillId(id);
     try {
       await deleteCandidateSkill(id);
@@ -96,9 +90,7 @@ export default function Step3Skills({ data, onChange, onNext, onBack }: Props) {
         <ConfirmDialog
           label={confirm.label}
           onConfirm={confirm.onConfirm}
-          onCancel={() =>
-            setConfirm({ open: false, label: "", onConfirm: async () => {} })
-          }
+          onCancel={resetConfirm}
         />
       )}
       {skillModal.open && (
@@ -243,7 +235,7 @@ export default function Step3Skills({ data, onChange, onNext, onBack }: Props) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  confirmDelete(
+                                  triggerDelete(
                                     `Delete skill "${s.name}"?`,
                                     () => handleDeleteSkill(s.id),
                                   )

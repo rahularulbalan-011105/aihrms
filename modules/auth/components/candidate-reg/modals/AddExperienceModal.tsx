@@ -11,19 +11,13 @@ import {
 import type { ExperienceFormData, ProjectForm } from "../shared/types";
 import { EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES } from "../shared/constants";
 import { ChevronDownIcon, CalendarIcon, SpinnerIcon } from "../shared/icons";
+import { toLabel } from "@/lib/utils";
+import { isValidMMYYYY } from "../shared/validators";
 import ProjectsSubForm from "./ProjectsSubForm";
 
-/** "MM/YYYY" → "YYYY-MM-01" for LocalDate */
-function isValidMMYYYY(val: string): boolean {
-  if (!val || val.length !== 7) return false;
-  const [mm, yyyy] = val.split("/");
-  const month = parseInt(mm, 10);
-  const year  = parseInt(yyyy, 10);
-  return month >= 1 && month <= 12 && year >= 1950 && year <= 2100;
-}
-
+/** "MM/YYYY" → "YYYY-MM-01" for LocalDate. Returns undefined for empty or "Present". */
 function toLocalDate(mmYYYY: string): string | undefined {
-  if (!isValidMMYYYY(mmYYYY)) return undefined;
+  if (!mmYYYY || mmYYYY === "Present" || !isValidMMYYYY(mmYYYY)) return undefined;
   const [mm, yyyy] = mmYYYY.split("/");
   return `${yyyy}-${mm.padStart(2, "0")}-01`;
 }
@@ -86,8 +80,6 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
         if (!items.length) return;
         // backend returns e.g. [{ name: "FULL_TIME" }]
         // Convert to display labels: "FULL_TIME" → "Full Time"
-        const toLabel = (s: string) =>
-          s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
         const labels = items.map((i) => toLabel(i.name));
         const map    = Object.fromEntries(items.map((i) => [toLabel(i.name), i.name]));
         setEmploymentTypes(labels);

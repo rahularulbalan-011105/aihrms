@@ -6,7 +6,7 @@ import AddCertificationModal from "../modals/AddCertificationModal";
 import { deleteCertification } from "../../../services/candidate.service";
 import { CertIcon, CertIconLg, EditIcon, TrashIcon, SpinnerIcon } from "../shared/icons";
 import { Tooltip, ConfirmDialog } from "../shared/ui";
-import type { ConfirmState } from "../shared/types";
+import { useConfirmDelete } from "../shared/hooks";
 
 interface Props {
   certifications: Certification[];
@@ -15,14 +15,11 @@ interface Props {
 
 export default function CertificationsSection({ certifications, onChange }: Props) {
   const [certModal,      setCertModal]      = useState<{ open: boolean; editCert?: Certification }>({ open: false });
-  const [confirm,        setConfirm]        = useState<ConfirmState>({ open: false, label: "", onConfirm: async () => {} });
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
   const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
 
-  const confirmDelete = (label: string, action: () => Promise<void>) =>
-    setConfirm({ open: true, label, onConfirm: action });
-
   const handleDeleteCert = async (id: string) => {
-    setConfirm({ open: false, label: "", onConfirm: async () => {} });
+    resetConfirm();
     setDeletingCertId(id);
     try {
       await deleteCertification(id);
@@ -35,7 +32,7 @@ export default function CertificationsSection({ certifications, onChange }: Prop
     <section className="p-5">
       {confirm.open && (
         <ConfirmDialog label={confirm.label} onConfirm={confirm.onConfirm}
-          onCancel={() => setConfirm({ open: false, label: "", onConfirm: async () => {} })} />
+          onCancel={resetConfirm} />
       )}
       {certModal.open && (
         <AddCertificationModal
@@ -103,7 +100,7 @@ export default function CertificationsSection({ certifications, onChange }: Prop
                         </Tooltip>
                         <Tooltip label="Delete">
                           <button type="button"
-                            onClick={() => confirmDelete(`Delete "${c.name}"?`, () => handleDeleteCert(c.id))}
+                            onClick={() => triggerDelete(`Delete "${c.name}"?`, () => handleDeleteCert(c.id))}
                             disabled={deletingCertId === c.id}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-ink-400 hover:text-red-500 disabled:opacity-40 transition">
                             {deletingCertId === c.id ? <SpinnerIcon /> : <TrashIcon />}

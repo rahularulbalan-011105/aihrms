@@ -11,7 +11,7 @@ import {
   BriefcaseIcon, BriefcaseIconLg, EditIcon, TrashIcon, SpinnerIcon, ChevronIcon,
 } from "../shared/icons";
 import { Tooltip, ConfirmDialog, SectionHeader, EmptyState } from "../shared/ui";
-import type { ConfirmState } from "../shared/types";
+import { useConfirmDelete } from "../shared/hooks";
 
 interface Props {
   data: CandidateRegStep2Data;
@@ -38,18 +38,13 @@ export default function Step2Professional({ data, onChange, onNext, onBack }: Pr
   const [expandedExp, setExpandedExp] = useState<Set<string>>(new Set(data.experience.map((e) => e.id)));
   const [deletingExpId, setDeletingExpId] = useState<string | null>(null);
   const [expModal, setExpModal]       = useState<ExpModalState>({ open: false });
-  const [confirm, setConfirm]         = useState<ConfirmState>({
-    open: false, label: "", onConfirm: async () => {},
-  });
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
 
   const handleNext = () => { onChange({ education, experience }); onNext(); };
   const handleBack = () => { onChange({ education, experience }); onBack(); };
 
-  const confirmDelete = (label: string, action: () => Promise<void>) =>
-    setConfirm({ open: true, label, onConfirm: action });
-
   const handleDeleteExperience = async (id: string) => {
-    setConfirm({ open: false, label: "", onConfirm: async () => {} });
+    resetConfirm();
     setDeletingExpId(id);
     try {
       await deleteWorkExperience(id);
@@ -75,7 +70,7 @@ export default function Step2Professional({ data, onChange, onNext, onBack }: Pr
         <ConfirmDialog
           label={confirm.label}
           onConfirm={confirm.onConfirm}
-          onCancel={() => setConfirm({ open: false, label: "", onConfirm: async () => {} })}
+          onCancel={resetConfirm}
         />
       )}
       {expModal.open && (
@@ -120,8 +115,17 @@ export default function Step2Professional({ data, onChange, onNext, onBack }: Pr
                 expanded={expandedExp.has(exp.id)}
                 onToggle={() => toggleExpand(exp.id)}
                 onEdit={() => setExpModal({ open: true, initialExperience: exp })}
-                onDelete={() => confirmDelete(`Delete experience at "${exp.company}"?`, () => handleDeleteExperience(exp.id))}
+                onDelete={() => triggerDelete(`Delete experience at "${exp.company}"?`, () => handleDeleteExperience(exp.id))}
                 isDeleting={deletingExpId === exp.id}
+                onDeleteProject={(projId) => {
+                  setExperience((prev) =>
+                    prev.map((e) =>
+                      e.id === exp.id
+                        ? { ...e, projects: e.projects.filter((p) => p.id !== projId) }
+                        : e,
+                    ),
+                  );
+                }}
               />
             ))}
           </div>
@@ -138,9 +142,10 @@ export default function Step2Professional({ data, onChange, onNext, onBack }: Pr
 }
 
 /* ── Experience Card ── */
-function ExperienceCard({ exp, expanded, onToggle, onEdit, onDelete, isDeleting }: {
+function ExperienceCard({ exp, expanded, onToggle, onEdit, onDelete, isDeleting, onDeleteProject }: {
   exp: Experience; expanded: boolean; isDeleting: boolean;
   onToggle: () => void; onEdit: () => void; onDelete: () => void;
+  onDeleteProject: (projId: string) => void;
 }) {
   const duration = `${fmtDate(exp.startDate)} – ${fmtDate(exp.endDate)}`;
   const noticePeriodDisplay = exp.noticePeriod
@@ -171,17 +176,17 @@ function ExperienceCard({ exp, expanded, onToggle, onEdit, onDelete, isDeleting 
         </div>
         <div className="flex items-center gap-1 pt-3.5">
           <Tooltip label="Edit">
-            <button type="button" onClick={onEdit}
+            <button type="button" onClick={onEdit} aria-label="Edit experience"
               className="p-1.5 rounded-lg hover:bg-brand-50 text-ink-400 hover:text-brand-600 transition"><EditIcon /></button>
           </Tooltip>
           <Tooltip label="Delete">
-            <button type="button" onClick={onDelete} disabled={isDeleting}
+            <button type="button" onClick={onDelete} disabled={isDeleting} aria-label="Delete experience"
               className="p-1.5 rounded-lg hover:bg-red-50 text-ink-400 hover:text-red-500 disabled:opacity-40 transition">
               {isDeleting ? <SpinnerIcon /> : <TrashIcon />}
             </button>
           </Tooltip>
           <Tooltip label={expanded ? "Collapse" : "Expand"}>
-            <button type="button" onClick={onToggle}
+            <button type="button" onClick={onToggle} aria-label={expanded ? "Collapse projects" : "Expand projects"}
               className="p-1.5 rounded-lg hover:bg-ink-100 text-ink-400 hover:text-ink-700 transition">
               <ChevronIcon expanded={expanded} />
             </button>
@@ -257,12 +262,12 @@ function ExperienceCard({ exp, expanded, onToggle, onEdit, onDelete, isDeleting 
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-1">
-                          <Tooltip label="Edit">
-                            <button type="button" onClick={onEdit}
+                          <Tooltip label="Edit experience">
+                            <button type="button" onClick={onEdit} aria-label="Edit experience to manage projects"
                               className="p-1 rounded hover:bg-brand-50 text-ink-400 hover:text-brand-600 transition"><EditIcon /></button>
                           </Tooltip>
-                          <Tooltip label="Delete">
-                            <button type="button" onClick={onEdit}
+                          <Tooltip label="Remove project">
+                            <button type="button" onClick={() => onDeleteProject(proj.id)} aria-label="Remove project"
                               className="p-1 rounded hover:bg-red-50 text-ink-400 hover:text-red-500 transition"><TrashIcon /></button>
                           </Tooltip>
                         </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RoleSelector from "./RoleSelector";
-import { authService } from "../services/auth.service";
+import { loginUser } from "../services/auth.service";
 import type { UserRole } from "../types/auth.types";
 
 export default function LoginForm() {
@@ -37,7 +37,7 @@ export default function LoginForm() {
     try {
       setLoading(true);
       setSubmitError("");
-      await authService.login({ role, email, password });
+      await loginUser({ role, email, password });
       router.push("/dashboard");
     } catch {
       setSubmitError("Invalid email or password. Please try again.");
@@ -69,37 +69,41 @@ export default function LoginForm() {
 
         {/* Email */}
         <div>
-          <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
+          <label htmlFor="login-email" className="block text-[13px] font-semibold text-ink-700 mb-1.5">
             {role === "candidate" ? "Email address" : "Work email"}
           </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
             placeholder={role === "candidate" ? "you@example.com" : "you@company.com"}
+            aria-describedby={errors.email ? "login-email-error" : undefined}
             className={`w-full px-4 py-3 rounded-xl border text-[14px] outline-none transition bg-white ${
               errors.email
                 ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
                 : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             }`}
           />
-          {errors.email && <p className="mt-1 text-[12px] text-red-600">{errors.email}</p>}
+          {errors.email && <p id="login-email-error" role="alert" className="mt-1 text-[12px] text-red-600">{errors.email}</p>}
         </div>
 
         {/* Password */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[13px] font-semibold text-ink-700">Password</label>
+            <label htmlFor="login-password" className="text-[13px] font-semibold text-ink-700">Password</label>
             <Link href="/forgot-password" className="text-[13px] text-brand-600 hover:text-brand-700 font-medium">
               Forgot password?
             </Link>
           </div>
           <div className="relative">
             <input
+              id="login-password"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
               placeholder="Enter your password"
+              aria-describedby={errors.password ? "login-password-error" : undefined}
               className={`w-full px-4 py-3 pr-12 rounded-xl border text-[14px] outline-none transition bg-white ${
                 errors.password
                   ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
@@ -109,13 +113,14 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-600 transition"
               tabIndex={-1}
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
           </div>
-          {errors.password && <p className="mt-1 text-[12px] text-red-600">{errors.password}</p>}
+          {errors.password && <p id="login-password-error" role="alert" className="mt-1 text-[12px] text-red-600">{errors.password}</p>}
         </div>
 
         <button

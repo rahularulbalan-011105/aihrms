@@ -14,6 +14,7 @@ import {
   GoogleIcon, AppleIcon, ArrowRightIcon, SpinnerIcon,
 } from "../shared/icons";
 import { HEAR_OPTIONS } from "../shared/constants";
+import { isValidEmail, isStrongPassword } from "../shared/validators";
 
 interface Props {
   data: CandidateRegStep1Data;
@@ -33,15 +34,14 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
     const errs: Partial<Record<keyof CandidateRegStep1Data, string>> = {};
     if (!data.firstName.trim()) errs.firstName = "Required";
     if (!data.lastName.trim())  errs.lastName  = "Required";
-    if (!data.email.trim())     errs.email     = "Required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errs.email = "Invalid email";
+    if (!data.email.trim())              errs.email = "Required";
+    else if (!isValidEmail(data.email))  errs.email = "Invalid email";
     if (!data.phone.trim()) errs.phone = "Required";
     if (!data.password) errs.password = "Required";
-    else if (data.password.length < 8)            errs.password = "Minimum 8 characters";
-    else if (!/[A-Z]/.test(data.password))        errs.password = "Must contain an uppercase letter";
-    else if (!/[a-z]/.test(data.password))        errs.password = "Must contain a lowercase letter";
-    else if (!/[0-9]/.test(data.password))        errs.password = "Must contain a number";
-    else if (!/[^A-Za-z0-9]/.test(data.password)) errs.password = "Must contain a special character (e.g. @#$!)";
+    else {
+      const pwErr = isStrongPassword(data.password);
+      if (pwErr) errs.password = pwErr;
+    }
     if (!data.confirmPassword) errs.confirmPassword = "Required";
     else if (data.password !== data.confirmPassword) errs.confirmPassword = "Passwords don't match";
     if (!data.dateOfBirth) {
@@ -98,59 +98,67 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
 
       {/* Two-column form grid */}
       <div className="grid md:grid-cols-2 gap-3">
-        <Field label="First Name" required error={localErrors.firstName}>
-          <InputWithIcon icon={<PersonIcon />} value={data.firstName}
+        <Field id="firstName" label="First Name" required error={localErrors.firstName}>
+          <InputWithIcon id="firstName" icon={<PersonIcon />} value={data.firstName}
             onChange={(v) => { set("firstName", v); setLocalErrors((p) => ({ ...p, firstName: "" })); }}
-            placeholder="Enter your first name" hasError={!!localErrors.firstName} />
+            placeholder="Enter your first name" hasError={!!localErrors.firstName}
+            aria-describedby={localErrors.firstName ? "firstName-error" : undefined} />
         </Field>
-        <Field label="Last Name" required error={localErrors.lastName}>
-          <InputWithIcon icon={<PersonIcon />} value={data.lastName}
+        <Field id="lastName" label="Last Name" required error={localErrors.lastName}>
+          <InputWithIcon id="lastName" icon={<PersonIcon />} value={data.lastName}
             onChange={(v) => { set("lastName", v); setLocalErrors((p) => ({ ...p, lastName: "" })); }}
-            placeholder="Enter your last name" hasError={!!localErrors.lastName} />
+            placeholder="Enter your last name" hasError={!!localErrors.lastName}
+            aria-describedby={localErrors.lastName ? "lastName-error" : undefined} />
         </Field>
 
-        <Field label="Email Address" required error={localErrors.email}>
-          <InputWithIcon icon={<MailIcon />} value={data.email}
+        <Field id="email" label="Email Address" required error={localErrors.email}>
+          <InputWithIcon id="email" icon={<MailIcon />} value={data.email}
             onChange={(v) => { set("email", v); setLocalErrors((p) => ({ ...p, email: "" })); }}
-            placeholder="Enter your email address" type="email" hasError={!!localErrors.email} />
+            placeholder="Enter your email address" type="email" hasError={!!localErrors.email}
+            aria-describedby={localErrors.email ? "email-error" : undefined} />
         </Field>
-        <Field label="Phone Number" required error={localErrors.phone}>
-          <PhoneInput value={data.phone}
+        <Field id="phone" label="Phone Number" required error={localErrors.phone}>
+          <PhoneInput id="phone" value={data.phone}
             onChange={(v) => { set("phone", v); setLocalErrors((p) => ({ ...p, phone: "" })); }}
-            hasError={!!localErrors.phone} />
+            hasError={!!localErrors.phone}
+            aria-describedby={localErrors.phone ? "phone-error" : undefined} />
         </Field>
 
-        <Field label="Password" required error={localErrors.password}>
-          <InputWithIcon icon={<LockIcon />} value={data.password}
+        <Field id="password" label="Password" required error={localErrors.password}>
+          <InputWithIcon id="password" icon={<LockIcon />} value={data.password}
             onChange={(v) => { set("password", v); setLocalErrors((p) => ({ ...p, password: "" })); }}
-            placeholder="Create a strong password" type="password" hasError={!!localErrors.password} />
+            placeholder="Create a strong password" type="password" hasError={!!localErrors.password}
+            aria-describedby={localErrors.password ? "password-error" : undefined} />
         </Field>
-        <Field label="Confirm Password" required error={localErrors.confirmPassword}>
-          <InputWithIcon icon={<LockIcon />} value={data.confirmPassword}
+        <Field id="confirmPassword" label="Confirm Password" required error={localErrors.confirmPassword}>
+          <InputWithIcon id="confirmPassword" icon={<LockIcon />} value={data.confirmPassword}
             onChange={(v) => { set("confirmPassword", v); setLocalErrors((p) => ({ ...p, confirmPassword: "" })); }}
-            placeholder="Confirm your password" type="password" hasError={!!localErrors.confirmPassword} />
+            placeholder="Confirm your password" type="password" hasError={!!localErrors.confirmPassword}
+            aria-describedby={localErrors.confirmPassword ? "confirmPassword-error" : undefined} />
         </Field>
 
-        <Field label="Date of Birth" required error={localErrors.dateOfBirth}>
-          <InputWithIcon icon={<CalendarIcon />} value={data.dateOfBirth}
+        <Field id="dateOfBirth" label="Date of Birth" required error={localErrors.dateOfBirth}>
+          <InputWithIcon id="dateOfBirth" icon={<CalendarIcon />} value={data.dateOfBirth}
             onChange={(v) => { set("dateOfBirth", v); setLocalErrors((p) => ({ ...p, dateOfBirth: "" })); }}
             placeholder="DD / MM / YYYY" type="date"
             max={new Date().toISOString().split("T")[0]} min="1900-01-01"
-            hasError={!!localErrors.dateOfBirth} />
+            hasError={!!localErrors.dateOfBirth}
+            aria-describedby={localErrors.dateOfBirth ? "dateOfBirth-error" : undefined} />
         </Field>
-        <Field label="Current Location" required hint="City, State, Country" error={localErrors.currentLocation}>
-          <InputWithIcon icon={<LocationIcon />} value={data.currentLocation}
+        <Field id="currentLocation" label="Current Location" required hint="City, State, Country" error={localErrors.currentLocation}>
+          <InputWithIcon id="currentLocation" icon={<LocationIcon />} value={data.currentLocation}
             onChange={(v) => { set("currentLocation", v); setLocalErrors((p) => ({ ...p, currentLocation: "" })); }}
-            placeholder="Enter your city" hasError={!!localErrors.currentLocation} />
+            placeholder="Enter your city" hasError={!!localErrors.currentLocation}
+            aria-describedby={localErrors.currentLocation ? "currentLocation-error" : undefined} />
         </Field>
       </div>
 
       {/* Hear about us */}
       <div className="mt-3">
-        <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
+        <label htmlFor="hearAboutUs" className="block text-[13px] font-semibold text-ink-700 mb-1.5">
           Where did you hear about us? <span className="text-ink-400 font-normal">(Optional)</span>
         </label>
-        <select value={data.hearAboutUs} onChange={(e) => set("hearAboutUs", e.target.value)}
+        <select id="hearAboutUs" value={data.hearAboutUs} onChange={(e) => set("hearAboutUs", e.target.value)}
           className="w-full px-4 py-2 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition appearance-none">
           <option value="">Select an option</option>
           {HEAR_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -217,16 +225,21 @@ export default function Step1BasicInfo({ data, onChange, onNext }: Props) {
 }
 
 /* ── Sub-components ── */
-function Field({ label, required, hint, error, children }: {
-  label: string; required?: boolean; hint?: string; error?: string; children: React.ReactNode;
+function Field({ id, label, required, hint, error, children }: {
+  id?: string; label: string; required?: boolean; hint?: string; error?: string; children: React.ReactNode;
 }) {
+  const errorId = id && error ? `${id}-error` : undefined;
   return (
     <div>
-      <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
+      <label htmlFor={id} className="block text-[13px] font-semibold text-ink-700 mb-1.5">
+        {label} {required && <span className="text-red-500" aria-hidden="true">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-[12px] text-red-500 flex items-center gap-1"><span>⚠</span>{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="mt-1 text-[12px] text-red-500 flex items-center gap-1">
+          <span aria-hidden="true">⚠</span>{error}
+        </p>
+      )}
       {!error && hint && <p className="mt-1 text-[11.5px] text-ink-400">{hint}</p>}
     </div>
   );
@@ -251,17 +264,18 @@ function InputWithIcon({ icon, value, onChange, placeholder, type = "text", hasE
   );
 }
 
-function PhoneInput({ value, onChange, hasError = false }: {
-  value: string; onChange: (v: string) => void; hasError?: boolean;
+function PhoneInput({ value, onChange, hasError = false, id, "aria-describedby": ariaDescribedby }: {
+  value: string; onChange: (v: string) => void; hasError?: boolean; id?: string; "aria-describedby"?: string;
 }) {
   return (
     <div className="flex">
       <div className="flex items-center px-3 rounded-l-xl border border-r-0 border-ink-200 bg-ink-50 text-[13.5px] font-medium text-ink-700 gap-1.5 whitespace-nowrap">
         🇮🇳 <span className="text-ink-400">▾</span> +91
       </div>
-      <input type="tel" value={value}
+      <input id={id} type="tel" value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
         placeholder="Enter your phone number"
+        aria-describedby={ariaDescribedby}
         className={`flex-1 px-4 py-2 rounded-r-xl border text-[14px] bg-white outline-none transition ${
           hasError
             ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100"

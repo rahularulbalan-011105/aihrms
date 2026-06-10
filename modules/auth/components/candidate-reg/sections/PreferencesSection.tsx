@@ -6,6 +6,7 @@ import { SelectField } from "../shared/ui";
 import { PrefsIcon } from "../shared/icons";
 import type { PreferencesData } from "../shared/types";
 import { fetchEmploymentTypes } from "../../../services/candidate.service";
+import { toLabel } from "@/lib/utils";
 
 interface Props {
   data: PreferencesData;
@@ -14,8 +15,6 @@ interface Props {
 
 /** { label: "Full Time", enumName: "FULL_TIME" } */
 interface EmpTypeOption { label: string; enumName: string; }
-
-const toLabel = (s: string) => s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 // Fallback built from hardcoded constants
 const FALLBACK_EMP_OPTIONS: EmpTypeOption[] = EMPLOYMENT_TYPES.map((label) => ({

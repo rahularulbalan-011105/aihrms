@@ -26,7 +26,18 @@ export const getStoredJobTitle = (): string | null =>
 export const setStoredJobTitle = (title: string) =>
   localStorage.setItem("hiremind_job_title", title);
 
+/** Refresh token cached at login/register time */
+export const setRefreshToken = (token: string): void => {
+  if (isBrowser) localStorage.setItem("hiremind_refresh_token", token);
+};
+
+/** Current user ID cached at login/register time */
+export const setUserId = (id: string): void => {
+  if (isBrowser) localStorage.setItem("hiremind_user_id", id);
+};
+
 export const clearAuth = () => {
+  if (!isBrowser) return;
   ["hiremind_access_token", "hiremind_refresh_token", "hiremind_user_id",
    "hiremind_user_name", "hiremind_job_title"].forEach((k) =>
     localStorage.removeItem(k)

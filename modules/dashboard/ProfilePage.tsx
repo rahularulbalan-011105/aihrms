@@ -11,6 +11,7 @@ import {
 import ProfileLeftPanel    from "./components/profile/ProfileLeftPanel";
 import ProfileOverviewCard from "./components/profile/ProfileOverviewCard";
 import ProfileRightPanel   from "./components/profile/ProfileRightPanel";
+import { toLabel } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,10 +21,6 @@ function formatDate(iso: string | null): string {
   if (!iso) return "Present";
   const [yyyy, mm] = iso.split("-");
   return `${MONTHS_SHORT[parseInt(mm, 10) - 1]} ${yyyy}`;
-}
-
-function toLabel(s: string) {
-  return s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ─── Sub-sections ─────────────────────────────────────────────────────────────

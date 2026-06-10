@@ -91,13 +91,13 @@ Configured in `next.config.ts` using env vars from `.env.local`. Browser never h
 > **DevContainer networking:** Use `host.docker.internal` — not `localhost` — in `.env.local`.
 
 ### Token Storage (pre-NextAuth)
-All stored in `localStorage`. Helpers in `lib/api/config.ts`:
+All stored in `localStorage`. **Always use the helpers in `lib/api/config.ts`** — never call `localStorage` directly in services (no SSR guard).
 
 | Key | Helper |
 |---|---|
 | `hiremind_access_token` | `getAccessToken()` / `setAccessToken()` |
-| `hiremind_refresh_token` | — |
-| `hiremind_user_id` | — |
+| `hiremind_refresh_token` | `setRefreshToken()` |
+| `hiremind_user_id` | `setUserId()` |
 | `hiremind_user_name` | `getStoredUserName()` / `setStoredUserName()` |
 | `hiremind_job_title` | `getStoredJobTitle()` / `setStoredJobTitle()` |
 
@@ -111,9 +111,10 @@ All stored in `localStorage`. Helpers in `lib/api/config.ts`:
 ```bash
 USERS_API_URL=http://host.docker.internal:5001/user-service
 CANDIDATE_API_URL=http://host.docker.internal:5002/candidate-service
+NEXT_PUBLIC_DEFAULT_COUNTRY_CODE=+91   # optional — defaults to +91 in registerCandidateUser
 ```
 
-**Do NOT** use `NEXT_PUBLIC_` prefix — that bypasses the proxy and causes CORS errors.
+**Do NOT** use `NEXT_PUBLIC_` prefix on service URLs — that bypasses the proxy and causes CORS errors.
 **Restart `npm run dev`** after any change to `.env.local`.
 
 ---
@@ -125,11 +126,14 @@ hiremind_web/
 ├── app/
 │   ├── (marketing)/            # Public marketing pages — Header + Footer layout
 │   ├── (auth)/                 # Auth flow — each page owns its full layout
+│   │   ├── error.tsx           # Route-level error boundary for auth pages
 │   │   └── register/candidate/ # /register/candidate (4-step registration)
 │   ├── (app)/                  # Authenticated app shell (with sidebar)
+│   │   ├── error.tsx           # Route-level error boundary for dashboard
 │   │   ├── layout.tsx          # Wraps ProfileProvider + AppHeader + AppSidebar
 │   │   └── dashboard/page.tsx  # Thin wrapper → <DashboardPage />
 │   ├── (app-wide)/             # Authenticated, full-width (no sidebar)
+│   │   ├── error.tsx           # Route-level error boundary for profile
 │   │   ├── layout.tsx          # AppHeader only — no ProfileProvider, no sidebar
 │   │   └── profile/page.tsx    # Thin wrapper → <ProfilePage />
 │   ├── layout.tsx              # Root layout (html, body, fonts only)
@@ -139,6 +143,7 @@ hiremind_web/
 │   └── marketing/              # Shared marketing-only UI (Header, Footer, BrandLogo)
 │
 ├── lib/
+│   ├── utils.ts                # Shared utilities — toLabel() and future helpers
 │   └── api/
 │       └── config.ts           # API base URLs + all localStorage token/profile helpers
 │
@@ -151,6 +156,13 @@ hiremind_web/
 │   │   └── components/
 │   │       ├── AuthHeader.tsx         # Reusable auth header — h-[72px], BrandLogo size="md"
 │   │       └── candidate-reg/         # 4-step registration components (see Auth Integration section)
+│   │           └── shared/
+│   │               ├── constants.ts   # EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES, etc.
+│   │               ├── hooks.ts       # useConfirmDelete() — shared confirm-delete hook
+│   │               ├── icons.tsx      # Shared SVG icon components
+│   │               ├── types.ts       # ConfirmState, PreferencesData, ExperienceFormData, etc.
+│   │               ├── ui.tsx         # ConfirmDialog, Tooltip, SelectField, etc.
+│   │               └── validators.ts  # isValidEmail, isStrongPassword, isValidMMYYYY, isDateRangeValid
 │   │
 │   └── dashboard/
 │       ├── DashboardPage.tsx          # "use client" orchestrator — stats, search bar, job tabs, right sidebar
@@ -210,6 +222,8 @@ hiremind_web/
 - `(app)` — authenticated shell with sidebar — wraps `ProfileProvider` → `AppHeader` → `AppSidebar` → `<main>`
 - `(app-wide)` — authenticated full-width shell (no sidebar) — `AppHeader` only, **no `ProfileProvider`**; used for `/profile`
 
+Each route group has its own `error.tsx` for route-level error recovery — do not remove them.
+
 ### Header height standard
 All headers across every route group use **`h-[72px]`** and **`BrandLogo size="md"`** (56 px). This applies to:
 - `components/marketing/Header.tsx`
@@ -259,6 +273,54 @@ Use `@utility` directive in `globals.css` — plain CSS class selectors are NOT 
 
 The in-page section nav in `ProfileLeftPanel` links to sub-routes (`/profile/experience`, `/profile/education`, etc.) — these pages are **pending implementation**.
 
+### Shared utilities — lib/utils.ts
+`lib/utils.ts` is the home for cross-cutting utility functions:
+
+```ts
+import { toLabel } from "@/lib/utils";
+toLabel("FULL_TIME") // → "Full Time"
+```
+
+**Never define `toLabel` locally in a component** — import from `lib/utils`. The function lowercases the input before title-casing, which is mandatory for SCREAMING_SNAKE_CASE enum values.
+
+### Shared form validators — candidate-reg/shared/validators.ts
+All form validation logic lives in `modules/auth/components/candidate-reg/shared/validators.ts`:
+
+| Export | Use |
+|---|---|
+| `isValidEmail(v)` | Email format check (replaces inline regex) |
+| `isStrongPassword(v)` | Returns error string or `null` |
+| `isValidMMYYYY(v)` | MM/YYYY date format; `true` for empty or "Present" |
+| `isDateRangeValid(from, to)` | Checks from ≤ to |
+
+**Never duplicate these inline** — always import from validators.
+
+### Confirm-delete pattern — useConfirmDelete()
+All components that show a delete confirmation dialog must use the shared hook from `modules/auth/components/candidate-reg/shared/hooks.ts`:
+
+```ts
+const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
+
+// Open the dialog:
+triggerDelete(`Delete "${item.name}"?`, () => handleDelete(item.id));
+
+// In the delete handler:
+resetConfirm();
+
+// In the JSX:
+{confirm.open && (
+  <ConfirmDialog label={confirm.label} onConfirm={confirm.onConfirm} onCancel={resetConfirm} />
+)}
+```
+
+**Never** copy the `useState<ConfirmState>` + `confirmDelete` boilerplate inline again.
+
+### Accessibility baseline (WCAG 2.1 Level A)
+- Every `<label>` must have `htmlFor` pointing to its input's `id`
+- Every icon-only button must have `aria-label`
+- Every inline error message must have `role="alert"` and an `id`; its input must have `aria-describedby` pointing to that id
+- The `Field` component in `Step1BasicInfo.tsx` already implements all three — follow the same pattern for new forms
+
 ### Variable naming
 Use meaningful names — **never** single-letter state variables.
 
@@ -286,14 +348,18 @@ Tokens in `app/globals.css` (`@theme` syntax — do not rename):
 ## Auth Integration
 
 ### Login (`/login`)
-`LoginPage.tsx` → `loginUser()` in `auth.service.ts`:
+Both `LoginPage.tsx` and `LoginForm.tsx` call `loginUser()` in `auth.service.ts`:
 - `POST /api/users/auth/login` — role mapped: `candidate`→`CANDIDATE`, `recruiter`→`RECRUITMENT_COMPANY`
-- Stores tokens + userId in localStorage → redirects to `/dashboard`
+- Stores tokens + userId via SSR-safe helpers → redirects to `/dashboard`
+
+> `authService.login` (mock stub) has been removed. Always use `loginUser()`.
 
 ### Registration — Step 1 (with rollback)
 1. `registerCandidateUser(data)` → `POST /api/users/auth/register` → stores tokens + **`hiremind_user_name`**
 2. `updateCandidateBasicInfo(data)` → `PUT /api/candidate/profile/basic-info`
 3. If step 2 fails → `deleteCurrentUser()` → `DELETE /api/users/users/me` (rollback)
+
+Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"` — never hardcoded.
 
 ### Candidate Profile API
 - `fetchCandidateProfile()` → `GET /api/candidate/profile` (authed) — used by `ProfileContext` in `(app)` shell
@@ -313,7 +379,7 @@ See original detailed docs — APIs unchanged.
 Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `GET /api/candidate/master/employment-types` on mount.
 
 - Backend returns `{ data: [{ name: "FULL_TIME" }, ...] }` from `MasterDataController.getEmploymentTypes()`
-- `toLabel()` converts enum names to display labels: `"FULL_TIME"` → `"Full Time"` (must **lowercase first**: `s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())`)
+- `toLabel()` from `lib/utils.ts` converts enum names to display labels: `"FULL_TIME"` → `"Full Time"`
 - Falls back to hardcoded `EMPLOYMENT_TYPE_MAP` / `EMPLOYMENT_TYPES` from `shared/constants.ts` if API fails
 
 #### Employment type storage contract
@@ -322,7 +388,7 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - `Step3Skills` default employment type: `"FULL_TIME"` (enum name, not label)
 
 ### Shared UI Patterns (candidate-reg)
-- **`ConfirmDialog`** — fixed modal, trash icon, cancel + delete with spinner
+- **`ConfirmDialog`** — fixed modal, trash icon, cancel + delete with spinner. Always pair with `useConfirmDelete()` hook.
 - **`Tooltip`** — `relative group/tip`; requires no `overflow-hidden` on parent
 - **`DotsIndicator`** — 5 dots filled by proficiency level
 - **`SpinnerIcon`** — shown on delete button during async ops
@@ -335,6 +401,7 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - **Do not** put `Header`/`Footer` in root `app/layout.tsx`
 - **Do not** import from another module's internal files — barrel exports only
 - **Do not** hardcode backend ports — use `API.USERS` / `API.CANDIDATE` from `lib/api/config.ts`
+- **Do not** call `localStorage.setItem` / `localStorage.removeItem` directly in services — use helpers from `lib/api/config.ts` (they have the SSR guard)
 - **Do not** modify Tailwind tokens in `globals.css` without updating `docs/architecture.md`
 - **Do not** use single-letter variable names for React state
 - **Do not** call `fetchCandidateProfile()` directly in components inside `(app)` — consume `useProfile()` from `ProfileContext`
@@ -342,19 +409,26 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - **Do not** call `useProfile()` in `ProfileLeftPanel` — it receives all data as props from `ProfilePage`
 - **Do not** read `localStorage` in `useState` initializers — use `useEffect` instead
 - **Do not** use display labels (e.g. `"Full Time"`) as `preferredEmploymentTypes` payload values — backend expects enum names (`"FULL_TIME"`). Always send enum names to `PUT /profile/preferences`
-- **Do not** use `toLabel()` without lowercasing first — `"FULL_TIME".replace(/_/g," ")` stays ALL CAPS; always call `.toLowerCase()` before title-casing
+- **Do not** define `toLabel` locally in any component — import from `lib/utils.ts`
+- **Do not** duplicate email/password/date validation inline — import from `shared/validators.ts`
+- **Do not** copy the `useState<ConfirmState>` + `confirmDelete` boilerplate — use `useConfirmDelete()` from `shared/hooks.ts`
+- **Do not** use `authService.login()` — it has been removed; always call `loginUser()` from `auth.service.ts`
+- **Do not** add fake/placeholder personal data as fallback values in review or profile screens — use `"—"` for missing fields
 
 ---
 
 ## Pending Work (Next Steps)
 
 1. **Step 2 — Education attachment upload** — wire file upload to S3 via candidate API
-2. **Step 4 — Review + Submit** — full implementation; final registration submit endpoint
+2. **Step 4 — Review + Submit** — final registration submit endpoint (currently simulates delay)
 3. **Token refresh** — replace 401 redirect with silent refresh via NextAuth v5
 4. **NextAuth v5** — replace localStorage tokens with real session management
 5. **Middleware** — route protection and RBAC
 6. **Recruiter registration** — `/register/company`
 7. **Dashboard — real data** — replace mock job/stats data with live API calls
 8. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
-9. **React Query + Zustand** — install after backend integration complete
-10. **ESLint + Prettier** — code quality tooling
+9. **LoginPage accessibility** — add `htmlFor`/`id` to all form labels and inputs (same pattern as `Step1BasicInfo.tsx`)
+10. **Modal accessibility** — add `htmlFor`/`id`/`aria-describedby` to all form labels/inputs in `AddExperienceModal`, `AddSkillModal`, `AddCertificationModal`, `AddEducationModal`; add `aria-label` to close buttons
+11. **candidate.service.ts split** — 434 lines with 7 mixed domains; split into `profile.service.ts`, `experience.service.ts`, `education.service.ts`, `skills.service.ts`, `certifications.service.ts`, `preferences.service.ts`, `master.service.ts`
+12. **React Query + Zustand** — install after backend integration complete
+13. **ESLint + Prettier** — code quality tooling

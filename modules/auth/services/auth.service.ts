@@ -1,4 +1,4 @@
-import { API, getAccessToken, setAccessToken, clearAuth, setStoredUserName } from "@/lib/api/config";
+import { API, getAccessToken, setAccessToken, clearAuth, setStoredUserName, setRefreshToken, setUserId } from "@/lib/api/config";
 import type { LoginPayload, SignupPayload, AuthUser, CandidateRegStep1Data } from '../types/auth.types';
 
 /** DELETE /users/me — rollback user account if downstream registration fails */
@@ -42,12 +42,10 @@ export async function loginUser(payload: LoginPayload): Promise<string> {
 
   const { userId, accessToken, refreshToken } = json.data;
   setAccessToken(accessToken);
-  localStorage.setItem("hiremind_refresh_token", refreshToken);
-  localStorage.setItem("hiremind_user_id", userId);
+  setRefreshToken(refreshToken); // C-2: SSR-safe helper
+  setUserId(userId);             // C-2: SSR-safe helper
   return userId as string;
 }
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** POST /auth/register → stores token + returns userId */
 export async function registerCandidateUser(data: CandidateRegStep1Data): Promise<string> {
@@ -58,7 +56,7 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
     accountType:     "CANDIDATE",
     fullName:        `${data.firstName.trim()} ${data.lastName.trim()}`.trim(),
     email:           data.email.trim().toLowerCase(),
-    countryCode:     "+91",
+    countryCode:     process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91", // H-4: configurable
     phoneNumber:     data.phone.trim(),
     password:        data.password,
     confirmPassword: data.confirmPassword,
@@ -67,7 +65,9 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
     source:          data.hearAboutUs || null,
   };
 
-  console.debug("[register] payload →", { ...body, password: "***", confirmPassword: "***" });
+  if (process.env.NODE_ENV === "development") { // C-4: no PII in production logs
+    console.debug("[register] payload →", { ...body, password: "***", confirmPassword: "***" });
+  }
 
   const res = await fetch(`${API.USERS}/auth/register`, {
     method:  "POST",
@@ -76,7 +76,10 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
   });
 
   const json = await res.json().catch(() => null);
-  console.debug("[register] response →", res.status, json);
+
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[register] response →", res.status, json?.message);
+  }
 
   if (!res.ok) {
     // ApiResponse shape: { message, error: { code, details: { field: msg } } }
@@ -88,26 +91,20 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
 
   const { userId, accessToken, refreshToken } = json.data;
   setAccessToken(accessToken);
-  localStorage.setItem("hiremind_refresh_token", refreshToken);
-  localStorage.setItem("hiremind_user_id", userId);
+  setRefreshToken(refreshToken); // C-2: SSR-safe helper
+  setUserId(userId);             // C-2: SSR-safe helper
   setStoredUserName(body.fullName); // cache name for immediate header display
   return userId as string;
 }
 
-// Stub service — all functions simulate network delay.
-// Replace each with a real API call (POST /api/auth/...) when backend is ready.
-export const authService = {
-  login: async (payload: LoginPayload): Promise<AuthUser> => {
-    await delay(800);
-    return {
-      id: 'usr_1',
-      email: payload.email,
-      fullName: 'Test User',
-      role: payload.role,
-      token: 'mock-access-token',
-    };
-  },
+// ─── Stub service ─────────────────────────────────────────────────────────────
+// These methods simulate network delay until real backend endpoints are wired up.
+// authService.login has been removed — use loginUser() above instead (C-3).
+// TODO: Replace signup/verifyOtp/resendOtp with real POST /api/users/auth/... calls.
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const authService = {
   signup: async (payload: SignupPayload): Promise<{ message: string; email: string }> => {
     await delay(900);
     return { message: 'OTP sent to your email', email: payload.email };

@@ -1,4 +1,5 @@
 import type { FullProfile } from "@/modules/auth/services/candidate.service";
+import { toLabel } from "@/lib/utils";
 
 const MATCH_SEGMENTS = [
   { label: "Skills Match",     pct: 45, color: "#22c55e" },
@@ -14,10 +15,6 @@ function formatExp(years: number | null): string {
   if (y === 0) return `${m} Mos`;
   if (m === 0) return `${y} Yr${y !== 1 ? "s" : ""}`;
   return `${y} Yr${y !== 1 ? "s" : ""} ${m} Mos`;
-}
-
-function toLabel(s: string) {
-  return s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 interface Props { profile: FullProfile | null; }
