@@ -103,8 +103,41 @@ HireMind is an AI-powered recruitment platform. The `hiremind_web` app is built 
 | `role-selection/RoleCard.tsx` | Left-illustration + right-content card with full-width CTA |
 | `role-selection/AIPlatformStrip.tsx` | AI feature pills strip |
 | `role-selection/TrustStrip.tsx` | Company logo trust bar |
-| `candidate-reg/SidebarFeatures.tsx` | Step-1 sidebar feature list + trust badge |
-| `candidate-reg/SidebarProgress.tsx` | Steps 2-4 sidebar: progress bar, tips, help |
+| `candidate-reg/CandidateSidebar.tsx` | All-steps left sidebar: step message + illustration with chips + features/progress |
+| `candidate-reg/CandidateFormPanel.tsx` | Right form panel: title + ProgressStepper + step switcher (Step1–4) |
+| `candidate-reg/StepActions.tsx` | Back + Save & Continue buttons shared across all steps |
+| `candidate-reg/sections/SidebarFeatures.tsx` | Step-1 sidebar: card-style feature rows + trust badge |
+| `candidate-reg/sections/SidebarProgress.tsx` | Steps 2-4 sidebar: progress bar, **horizontal** step list, tips, help |
+| `candidate-reg/sections/EducationSection.tsx` | Education cards with add/edit/delete; wraps `AddEducationModal` |
+| `candidate-reg/sections/CertificationsSection.tsx` | Certifications table with add/edit/delete; wraps `AddCertificationModal` |
+| `candidate-reg/sections/PreferencesSection.tsx` | Preferences form (notice period, salary, roles, location, benefits) |
+| `candidate-reg/sections/UploadResumeBanner.tsx` | Resume upload prompt banner shown at bottom of Step 2 |
+| `candidate-reg/modals/AddEducationModal.tsx` | Add/Edit education — degree, institute, year, edu type, description, attachment |
+| `candidate-reg/modals/AddExperienceModal.tsx` | Main experience form fields (company, dates, job title); delegates projects to `ProjectsSubForm` |
+| `candidate-reg/modals/ProjectsSubForm.tsx` | Nested projects editor — project cards, skill tag input with search suggestions |
+| `candidate-reg/modals/AddSkillModal.tsx` | Skill modal orchestrator — right panel (proficiency, experience, top-skill toggle) |
+| `candidate-reg/modals/SkillLeftPanel.tsx` | Left panel of skill modal — search, popular skills grid, added skills list |
+| `candidate-reg/modals/AddCertificationModal.tsx` | Add/Edit certification — name/institution/year/valid-till/upload |
+
+### CandidateSidebar illustration pattern
+Matches `RoleSelectionPage` exactly:
+```tsx
+<div className="relative rounded-2xl bg-[#EDE9FF] h-[160px] mb-3 shrink-0 overflow-hidden">
+  <div className="absolute inset-x-6 top-6 bottom-0 rounded-full bg-[#C4B5FD]/30 z-0" />
+  <Image src="/images/candidate.png" alt="Candidate" fill sizes="340px" className="object-contain object-bottom z-[1]" />
+  {STEP_CHIPS[currentStep]}   {/* floating chips per step */}
+</div>
+```
+Sidebar width is **fixed** `w-[300px] xl:w-[340px]` across all 4 steps (no jump).
+Scrollbar hidden: `[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`
+
+### CandidateRegistration orchestration
+`CandidateRegistration` is a lean orchestrator — only state + two child components:
+```tsx
+<CandidateSidebar step={currentStep} />
+<CandidateFormPanel currentStep={currentStep} data={data} onStepChange={setStep} onDataChange={setData} onSubmit={...} />
+```
+Variable naming convention: `s` → `currentStep` everywhere.
 
 ---
 
@@ -609,20 +642,253 @@ const nextConfig: NextConfig = {
 
 ### 4.14 Environment Variables
 
+`.env.local` (never committed — gitignored):
 ```bash
-# .env.example
+# Backend service URLs — server-side only (no NEXT_PUBLIC_ prefix).
+# Use host.docker.internal when Next.js runs inside devcontainer (bridge network)
+# and backends run with host network mode.
+USERS_API_URL=http://host.docker.internal:5001/user-service
+CANDIDATE_API_URL=http://host.docker.internal:5002/candidate-service
+```
 
-# Server-only — never exposed to browser
-API_BASE_URL=https://api.hiremind.io
+> **DevContainer networking note:** The Next.js dev server runs inside the `vsc-hiremind_web` devcontainer (bridge network). Backend services run in separate Maven containers with `--network host`. Inside Docker, `localhost` resolves to the container itself — use `host.docker.internal` to reach the host (and through it, host-networked backends). Restart `npm run dev` after any `.env.local` change.
+
+Future / production additions:
+```bash
+# Server-only
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=<openssl rand -base64 32>
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Client-visible
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+# Client-visible (if ever needed)
 NEXT_PUBLIC_WS_URL=wss://api.hiremind.io
 ```
+
+### 4.15 API Proxy via Next.js Rewrites (CORS solution)
+
+Browser calls never hit the backend directly. All API traffic goes through Next.js server-side rewrites:
+
+```
+Browser → /api/users/...     → Next.js rewrite → host.docker.internal:5001/user-service/...
+Browser → /api/candidate/... → Next.js rewrite → host.docker.internal:5002/candidate-service/...
+```
+
+Config in `next.config.ts`:
+```ts
+async rewrites() {
+  const usersApi     = process.env.USERS_API_URL     ?? "http://localhost:5001/user-service";
+  const candidateApi = process.env.CANDIDATE_API_URL ?? "http://localhost:5002/candidate-service";
+  return [
+    { source: "/api/users/:path*",     destination: `${usersApi}/:path*`     },
+    { source: "/api/candidate/:path*", destination: `${candidateApi}/:path*` },
+  ];
+}
+```
+
+Client-side base URLs (`lib/api/config.ts`):
+```ts
+export const API = {
+  USERS:     "/api/users",      // always proxy — never NEXT_PUBLIC_ override
+  CANDIDATE: "/api/candidate",
+};
+```
+
+Token helpers also in `lib/api/config.ts`: `getAccessToken()`, `setAccessToken()`, `clearAuth()` — use `localStorage`.
+
+> **Do NOT** add `NEXT_PUBLIC_USERS_API_URL` or `NEXT_PUBLIC_CANDIDATE_API_URL` to `.env.local`. Those would bypass the proxy and cause CORS errors in the browser.
+
+### 4.16 Backend Service Ports
+
+| Service | Port | Context path | Base URL (from host) |
+|---|---|---|---|
+| users_api | 5001 | `/user-service` | `http://localhost:5001/user-service` |
+| candidate_api | 5002 | `/candidate-service` | `http://localhost:5002/candidate-service` |
+
+Both services share the same JWT secret. The `candidate_api` validates tokens issued by `users_api` — JWT issuer in both `application.properties` must be `hiremind-users-api`.
+
+### 4.17 Auth Flow — Login & Registration
+
+#### Login (`/login`)
+`LoginPage.tsx` calls `loginUser()` from `modules/auth/services/auth.service.ts`:
+- `POST /api/users/api/v1/auth/login` with `{ accountType, email, password, rememberMe }`
+- Role mapping: `"candidate"` → `"CANDIDATE"`, `"recruiter"` → `"RECRUITMENT_COMPANY"`
+- On success: stores `accessToken`, `refreshToken`, `userId` in `localStorage`
+- Redirects to `/dashboard`
+- Switching role tabs clears all field errors and submit error
+
+#### Candidate Registration — Step 1 (with rollback)
+On "Continue" in `Step1BasicInfo`:
+1. **`registerCandidateUser(data)`** — `POST /api/users/api/v1/auth/register` → stores tokens
+2. **`updateCandidateBasicInfo(data)`** — `PUT /api/candidate/api/v1/candidate/profile/basic-info`
+3. If step 2 fails → **`deleteCurrentUser()`** — `DELETE /api/users/api/v1/users/me` (rollback)
+
+Password validation matches backend `@StrongPassword`: min 8 chars + uppercase + lowercase + digit + special character.
+
+Service files:
+- `modules/auth/services/auth.service.ts` — `registerCandidateUser()`, `loginUser()`, `deleteCurrentUser()`
+- `modules/auth/services/candidate.service.ts` — `updateCandidateBasicInfo()`
+
+### 4.18 Backend — users_api Conventions
+
+- **Constructor injection**: all `@Service`, `@Component`, `@RestController` classes use `@RequiredArgsConstructor` (Lombok). No manual constructors.
+- **`LoginStatus` enum**: `SUCCESS`, `FAILED`, `REGISTERED`
+- **Login history propagation**:
+  - `saveLoginHistory()` — `Propagation.REQUIRES_NEW` — for login attempts (persists even if parent tx rolls back)
+  - `saveRegistrationHistory()` — `Propagation.REQUIRED` — for registration (joins parent tx so FK to `users` is satisfied before commit)
+- **`DELETE /api/v1/users/me`** — deletes the authenticated user's account; used as a registration rollback when `candidate_api` fails
+- **`email_verified` / `phone_verified`** — explicitly initialised to `false` in `UserAccount` entity; DB column also has `DEFAULT FALSE`
+- **`user_sessions`** — `ON DELETE CASCADE` from `users`; deleted automatically on user rollback
+- **`user_login_history`** — `ON DELETE SET NULL`; row kept as audit trail, `user_id` set to null
+
+### 4.19 Backend — candidate_api DB Schema
+
+**Table names** (as of current schema):
+
+| Table | Notes |
+|---|---|
+| `candidate` | Main profile — renamed from `candidate_profiles` |
+| `candidate_educations` | FK column: `candidate_id`; includes `location`, `year_of_passing` (VARCHAR), `grade`, `education_type`, `description` |
+| `candidate_work_experiences` | FK column: `candidate_id` |
+| `candidate_projects` | FK column: `work_experience_id` |
+| `candidate_skills` | FK columns: `candidate_id`, `skill_id` |
+| `candidate_certifications` | FK column: `candidate_id` |
+| `candidate_preferences` | FK column: `candidate_id` |
+| `skills` | Skill catalogue (seeded in V2) |
+| `degree_courses` | Master: degree / course options (seeded in V3, 27 rows) |
+| `education_types` | Master: education type options (seeded in V3 — Full Time, Part Time, Distance Learning, Online) |
+
+- All FK columns use `candidate_id` — not `candidate_profile_id`
+- `year_of_passing` is `VARCHAR(10)` — stored as text, not integer
+- All entities use `@RequiredArgsConstructor` (Lombok)
+- JWT issuer must be `hiremind-users-api` (matches tokens issued by `users_api`)
+
+**Migration files:**
+| File | Contents |
+|---|---|
+| `V1__candidate_service_initial_schema.sql` | All core tables including `candidate_educations` with full columns |
+| `V2__seed_popular_skills.sql` | Skills master data |
+| `V3__education_master_data.sql` | `degree_courses` + `education_types` tables + seed data |
+
+### 4.20 Backend — candidate_api Master Data Endpoints
+
+Public endpoints (no auth token required):
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/v1/candidate/master/degrees` | `[{ name, category }]` — all active degrees sorted by `sort_order` |
+| `GET` | `/api/v1/candidate/master/education-types` | `[{ name }]` — all active education types sorted by `sort_order` |
+
+These are permitted in `SecurityConfig` under `/api/v1/candidate/master/**`.
+
+### 4.21 Frontend — candidate.service.ts API Functions
+
+All authenticated calls use `authedFetch()` (injects `Authorization: Bearer <token>`). On `401`/`403`, redirects to `/login`.
+
+#### Basic Info & Master Data
+| Function | Method | Endpoint |
+|---|---|---|
+| `updateCandidateBasicInfo()` | PUT | `/api/v1/candidate/profile/basic-info` |
+| `fetchDegreeCourses()` | GET | `/api/v1/candidate/master/degrees` |
+| `fetchEducationTypes()` | GET | `/api/v1/candidate/master/education-types` |
+| `fetchSkills(q?)` | GET | `/api/v1/candidate/skills?q=` |
+
+#### Education
+| Function | Method | Endpoint |
+|---|---|---|
+| `addEducation(payload)` | POST | `/api/v1/candidate/profile/educations` |
+| `updateEducation(id, payload)` | PUT | `/api/v1/candidate/profile/educations/:id` |
+| `deleteEducation(id)` | DELETE | `/api/v1/candidate/profile/educations/:id` |
+
+`EducationPayload`: `degree`*, `institution`*, `location`*, `specialization`, `yearOfPassing` (string), `grade`, `educationType`, `description`.
+
+#### Work Experience
+| Function | Method | Endpoint |
+|---|---|---|
+| `addWorkExperience(payload)` | POST | `/api/v1/candidate/profile/work-experiences` |
+| `updateWorkExperience(id, payload)` | PUT | `/api/v1/candidate/profile/work-experiences/:id` |
+| `deleteWorkExperience(id)` | DELETE | `/api/v1/candidate/profile/work-experiences/:id` |
+
+`WorkExperiencePayload`: `companyName`*, `jobTitle`*, `employmentType`* (enum: `FULL_TIME`/`PART_TIME`/`CONTRACT`/`INTERNSHIP`/`FREELANCE`), `startDate`* (`YYYY-MM-DD`), `endDate` (`YYYY-MM-DD` or null), `currentlyWorking`*, `location`, `noticePeriod`, `projects[]`.
+
+`ProjectPayload`: `projectName`*, `roleName`, `description`, `startDate`, `endDate`, `technologiesUsed` (comma-separated string).
+
+Date conversion: form `MM/YYYY` → `YYYY-MM-01`.
+
+#### Skills
+| Function | Method | Endpoint |
+|---|---|---|
+| `addCandidateSkill(payload)` | POST | `/api/v1/candidate/profile/skills` |
+| `updateCandidateSkill(id, payload)` | PUT | `/api/v1/candidate/profile/skills/:id` |
+| `deleteCandidateSkill(id)` | DELETE | `/api/v1/candidate/profile/skills/:id` |
+
+`SkillPayload`: `skillName`*, `proficiencyLevel`* (`BEGINNER`/`INTERMEDIATE`/`ADVANCED`/`EXPERT`/`MASTER`), `experienceYears` (BigDecimal), `lastUsed` (`YYYY-MM-DD`), `topSkill`*, `additionalDetails`.
+
+`buildSkillPayload(skill: Skill): SkillPayload` — helper that converts:
+- `proficiency` label → backend enum via `PROFICIENCY_MAP`
+- `lastUsed` "May 2024" → `"2024-05-01"`
+- months → fractional years
+
+#### Certifications
+| Function | Method | Endpoint |
+|---|---|---|
+| `addCertification(payload)` | POST | `/api/v1/candidate/profile/certifications` |
+| `updateCertification(id, payload)` | PUT | `/api/v1/candidate/profile/certifications/:id` |
+| `deleteCertification(id)` | DELETE | `/api/v1/candidate/profile/certifications/:id` |
+
+`CertificationPayload`: `certificationName`*, `issuingInstitution`*, `credentialId`, `certificateUrl`, `passedYear` (Integer), `validTill` (`YYYY-MM-DD` — omit if `doesNotExpire: true`), `doesNotExpire`*, `displayOnProfile`*, `description`.
+
+#### Preferences
+| Function | Method | Endpoint |
+|---|---|---|
+| `savePreferences(payload)` | PUT | `/api/v1/candidate/profile/preferences` |
+
+`buildPreferencesPayload(data)` converts `PreferencesData` → `PreferencesPayload`:
+- `jobRolePreferences` → `rolePreferences`
+- `employmentTypes` labels → `EmploymentType` enums via `PREF_EMPLOYMENT_MAP` (`"Full Time"` → `FULL_TIME`, `"Remote"` → `REMOTE`, etc.)
+- `additionalNotes` → `additionalPreferences`
+
+`PreferencesPayload`: `noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation`, `openToRelocate`*, `rolePreferences[]`, `preferredEmploymentTypes[]` (backend `EmploymentType` enums), `benefits[]`, `additionalPreferences`.
+
+### 4.22 JWT Security — Dev vs Production
+
+| Setting | Dev value | Production value |
+|---|---|---|
+| `hiremind.security.jwt.access-token-minutes` | `1440` (24 h) | `15` (15 min) |
+| `hiremind.security.jwt.refresh-token-days` | `30` | `30` |
+
+JWT is issued by `users_api` and validated by `candidate_api`. Both must share the same `secret` and `issuer` (`hiremind-users-api`).
+
+Spring Security's `JwtAuthenticationFilter` silently swallows `RuntimeException` (including expired-token errors) and clears the security context — resulting in a `403` response rather than `401`. The frontend handles both `401` and `403` by redirecting to `/login`. After changing `access-token-minutes`, **rebuild the users_api Docker container** and re-login.
+
+### 4.23 Shared UI Patterns — candidate-reg
+
+All shared primitives live in `candidate-reg/shared/` and are imported across steps, modals, and sections.
+
+#### `shared/ui.tsx` — UI components
+| Component | Description |
+|---|---|
+| `ConfirmDialog` | Fixed overlay modal: trash icon, label, "This action cannot be undone", Cancel + Delete buttons with inline spinner |
+| `Tooltip` | `relative group/tip` wrapper; dark tooltip anchored `bottom-full`. Parent must NOT have `overflow-hidden` (clips upward-positioned tooltips) |
+| `DotsIndicator` | Row of 5 dots; `filled` prop controls how many are brand-colored (1=Beginner → 5=Master) |
+| `SectionHeader` | Section title + icon + "Add …" button row |
+| `EmptyState` | Centered icon + message + hint for empty lists |
+| `SelectField` | Label + native `<select>` with brand focus ring |
+
+#### `shared/icons.tsx` — SVG icons (named exports, no `"use client"`)
+All icon components: `PersonIcon`, `MailIcon`, `LockIcon`, `LocationIcon`, `GoogleIcon`, `AppleIcon`, `ArrowRightIcon`, `ArrowLeftIcon`, `ChevronDownIcon`, `ChevronIcon({ expanded })`, `EditIcon`, `TrashIcon`, `TrashSmIcon`, `PlusIcon`, `SpinnerIcon`, `CalendarIcon`, `CalendarIconSm`, `GradIcon`, `GradIconLg`, `BriefcaseIcon`, `BriefcaseIconLg`, `UploadIcon`, `UploadCloudIcon`, `SkillsIcon`, `SkillsIconLg`, `SkillIcon`, `CertIcon`, `CertIconLg`, `CertBadgeIcon`, `PrefsIcon`, `SearchIcon`, `InfoIcon`, `LinkIcon`
+
+#### `shared/constants.ts` — data constants
+`MONTHS`, `MONTHS_LONG`, `PAST_YEARS`, `FUTURE_YEARS`, `LAST_USED_OPTIONS`, `PROFICIENCY_LEVELS`, `PROFICIENCY_DOTS`, `POPULAR_SKILLS`, `POPULAR_SKILL_COLORS`, `EMPLOYMENT_TYPE_MAP`, `EMPLOYMENT_TYPES`, `NOTICE_OPTIONS`, `SALARY_OPTIONS`, `SALARY_TYPE`, `LOCATION_OPTIONS`, `BENEFIT_OPTIONS`, `HEAR_OPTIONS`
+
+#### `shared/types.ts` — form interfaces + modal state types
+`EducationFormData`, `ExperienceFormData`, `ProjectForm`, `CertificationFormData`, `PreferencesData`, `EduModalState`, `ConfirmState`
+
+#### Import path convention
+Files in `steps/`, `modals/`, `sections/` are one level deeper than root:
+- Services/types: `../../../services/` and `../../../types/`
+- Shared utilities: `../shared/icons`, `../shared/ui`, `../shared/constants`, `../shared/types`
+- Cross-folder: steps import modals via `../modals/`, sections import modals via `../modals/`
 
 ### 4.15 Packages to Install
 

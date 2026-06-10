@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authService } from "../services/auth.service";
+import { loginUser } from "../services/auth.service";
 import type { UserRole } from "../types/auth.types";
 import AuthHeader from "./AuthHeader";
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       setSubmitError("");
-      await authService.login({ role, email, password, rememberMe });
+      await loginUser({ role, email, password, rememberMe });
       router.push("/dashboard");
     } catch {
       setSubmitError("Invalid email or password. Please try again.");
@@ -84,20 +84,12 @@ export default function LoginPage() {
               />
             </div>
             {/* Illustration */}
-            <div className="w-[190px] xl:w-[210px] shrink-0 rounded-2xl bg-white/70 border border-brand-100 h-full min-h-[160px] flex flex-col items-center justify-center gap-2 text-ink-300">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                <rect x="4" y="20" width="26" height="18" rx="3" fill="#e9e2ff"/>
-                <rect x="34" y="24" width="26" height="18" rx="3" fill="#e9e2ff"/>
-                <circle cx="17" cy="14" r="6" fill="#c4b5fd"/>
-                <circle cx="47" cy="18" r="6" fill="#86efac"/>
-                <rect x="8" y="24" width="14" height="2" rx="1" fill="#a78bfa"/>
-                <rect x="8" y="28" width="10" height="2" rx="1" fill="#a78bfa"/>
-                <rect x="38" y="28" width="14" height="2" rx="1" fill="#a78bfa"/>
-                <rect x="38" y="32" width="10" height="2" rx="1" fill="#a78bfa"/>
-                <rect x="10" y="38" width="22" height="3" rx="1.5" fill="#c4b5fd"/>
-                <rect x="32" y="42" width="26" height="3" rx="1.5" fill="#c4b5fd"/>
-              </svg>
-              <span className="text-[11px] text-center px-3">Candidate &amp; Recruiter</span>
+            <div className="w-[190px] xl:w-[210px] shrink-0 rounded-2xl overflow-hidden border border-brand-100 h-full min-h-[160px]">
+              <img
+                src="/images/rec-cand.png"
+                alt="Candidate & Recruiter"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 
@@ -133,7 +125,7 @@ export default function LoginPage() {
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRole(r)}
+                    onClick={() => { setRole(r); setSubmitError(""); setErrors({}); }}
                     className={`flex items-center gap-2.5 p-2.5 rounded-xl border-2 transition text-left ${
                       selected ? "border-brand-500 bg-brand-50/40" : "border-ink-200 bg-white hover:border-ink-300"
                     }`}
@@ -283,11 +275,11 @@ export default function LoginPage() {
         <div className="text-center text-[12.5px] text-ink-500 space-x-1">
           <span>© 2024 AI HRMS. All rights reserved.</span>
           <span className="text-ink-300">|</span>
-          <Link href="/terms" className="hover:text-ink-700 transition">Terms &amp; Conditions</Link>
+          <Link href="/terms" className="text-brand-600 hover:text-brand-700 transition">Terms &amp; Conditions</Link>
           <span className="text-ink-300">|</span>
-          <Link href="/privacy" className="hover:text-ink-700 transition">Privacy Policy</Link>
+          <Link href="/privacy" className="text-brand-600 hover:text-brand-700 transition">Privacy Policy</Link>
           <span className="text-ink-300">|</span>
-          <Link href="/contact" className="hover:text-ink-700 transition">Help Center</Link>
+          <Link href="/contact" className="text-brand-600 hover:text-brand-700 transition">Help Center</Link>
         </div>
       </footer>
     </div>

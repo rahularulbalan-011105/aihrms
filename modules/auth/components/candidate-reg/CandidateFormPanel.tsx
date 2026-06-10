@@ -1,10 +1,10 @@
 "use client";
 
 import ProgressStepper from "./ProgressStepper";
-import Step1BasicInfo from "./Step1BasicInfo";
-import Step2Professional from "./Step2Professional";
-import Step3Skills from "./Step3Skills";
-import Step4Review from "./Step4Review";
+import Step1BasicInfo from "./steps/Step1BasicInfo";
+import Step2Professional from "./steps/Step2Professional";
+import Step3Skills from "./steps/Step3Skills";
+import Step4Review from "./steps/Step4Review";
 import type { CandidateRegData } from "../../types/auth.types";
 
 interface CandidateFormPanelProps {
@@ -31,7 +31,7 @@ export default function CandidateFormPanel({
 }: CandidateFormPanelProps) {
   return (
     <main className="flex-1 p-3 lg:p-5 overflow-y-auto min-h-0">
-      <div className="bg-white rounded-2xl border border-ink-100 shadow-sm p-4 lg:p-5 h-full">
+      <div className="bg-white rounded-2xl border border-ink-100 shadow-sm p-4 lg:p-5 min-h-full">
         <h1 className="font-display font-extrabold text-[19px] text-ink-900 mb-1">
           {FORM_TITLES[currentStep]}
         </h1>

@@ -21,10 +21,10 @@ export default function Header() {
     href === "/" ? pathname === "/" : pathname?.startsWith(href);
 
   return (
-    <header className="bg-white border-b border-ink-100">
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 py-2 flex items-center gap-6">
+    <header className="bg-white border-b border-ink-100 min-h-[72px]">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-10 h-[72px] flex items-center gap-6">
         <Link href="/" className="shrink-0 flex items-center">
-          <BrandLogo size="lg" />
+          <BrandLogo size="md" />
         </Link>
 
         <nav className="hidden lg:flex items-center gap-7 mx-auto">

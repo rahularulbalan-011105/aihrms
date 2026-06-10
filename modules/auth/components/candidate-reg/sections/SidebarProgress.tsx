@@ -23,11 +23,7 @@ export default function SidebarProgress({ currentStep }: SidebarProgressProps) {
           <span className="text-[12px] font-semibold text-brand-600">Step {currentStep} of 4</span>
         </div>
         <div className="h-2 rounded-full bg-ink-100 overflow-hidden mb-3">
-          {/* width must be inline (dynamic); background via utility class */}
-          <div
-            className="h-full rounded-full transition-all duration-500 btn-gradient-brand"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full rounded-full transition-all duration-500 btn-gradient-brand" style={{ width: `${progress}%` }} />
         </div>
         {/* Horizontal steps */}
         <div className="flex items-start justify-between gap-1 mt-1">
@@ -37,7 +33,6 @@ export default function SidebarProgress({ currentStep }: SidebarProgressProps) {
             const active = n === currentStep;
             return (
               <div key={s} className="flex flex-col items-center flex-1 relative">
-                {/* connector line */}
                 {i < SIDEBAR_STEPS.length - 1 && (
                   <div className={`absolute top-[9px] left-1/2 w-full h-[2px] ${done ? "bg-brand-600" : "bg-ink-200"}`} />
                 )}
