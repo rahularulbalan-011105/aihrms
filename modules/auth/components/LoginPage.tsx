@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { loginUser } from "../services/auth.service";
 import type { UserRole } from "../types/auth.types";
 import AuthHeader from "./AuthHeader";
+import { assetPath } from "@/lib/assetPath";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function LoginPage() {
             {/* Illustration */}
             <div className="w-[190px] xl:w-[210px] shrink-0 rounded-2xl overflow-hidden border border-brand-100 h-full min-h-[160px]">
               <img
-                src="/images/rec-cand.png"
+                src={assetPath("/images/rec-cand.png")}
                 alt="Candidate & Recruiter"
                 className="w-full h-full object-cover"
               />

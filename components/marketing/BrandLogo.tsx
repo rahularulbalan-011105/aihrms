@@ -11,6 +11,8 @@
  *
  * Or pass an explicit `height` number for full control.
  */
+import { assetPath } from "@/lib/assetPath";
+
 interface Props {
   size?: "lg" | "md" | "sm";
   height?: number;
@@ -26,7 +28,7 @@ export default function BrandLogo({ size = "lg", height, className = "" }: Props
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo.png"
+      src={assetPath("/logo.png")}
       alt="HireMind"
       height={h}
       width={w}
