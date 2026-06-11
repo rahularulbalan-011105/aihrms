@@ -15,11 +15,6 @@ const nextConfig: NextConfig = {
   // basePath/assetPrefix only kick in for the production build. In dev they stay "" so URLs are unchanged.
   basePath:    isProd ? `/${repo}` : "",
   assetPrefix: isProd ? `/${repo}` : "",
-  experimental: {
-    turbo: {
-      root: "/workspaces/hiremind_web",
-    },
-  },
   // Rewrites are silently ignored by `next build` when `output: "export"` is set, but still run under `next dev`.
   async rewrites() {
     const usersApi     = process.env.USERS_API_URL     ?? "http://localhost:5001/user-service";

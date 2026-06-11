@@ -39,7 +39,7 @@ export default function AddSkillModal({ onClose, onSaved, addedSkills, onDeleteS
   const [isSaving, setIsSaving]           = useState(false);
   const [apiError, setApiError]           = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     clearTimeout(searchTimer.current);
