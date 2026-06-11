@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { assetPath } from "@/lib/assetPath";
 
 function BrandLogoImg({ height = 48 }: { height?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo.png" alt="HireMind" height={height} width={Math.round(height * 1.46)} style={{ height: `${height}px`, width: "auto", objectFit: "contain" }} />
+    <img src={assetPath("/logo.png")} alt="HireMind" height={height} width={Math.round(height * 1.46)} style={{ height: `${height}px`, width: "auto", objectFit: "contain" }} />
   );
 }
 

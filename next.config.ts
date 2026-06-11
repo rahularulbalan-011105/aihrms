@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
   // basePath/assetPrefix only kick in for the production build. In dev they stay "" so URLs are unchanged.
   basePath:    isProd ? `/${repo}` : "",
   assetPrefix: isProd ? `/${repo}` : "",
+  // Exposed to client code so raw <img src> strings can be prefixed at build time via `assetPath()`.
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isProd ? `/${repo}` : "",
+  },
   // Rewrites are silently ignored by `next build` when `output: "export"` is set, but still run under `next dev`.
   async rewrites() {
     const usersApi     = process.env.USERS_API_URL     ?? "http://localhost:5001/user-service";
