@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Certification } from "../../../types/auth.types";
-import { addCertification, updateCertification } from "../../../services/candidate.service";
+import { addCertification, updateCertification, uploadCertificateFile } from "../../../services/candidate.service";
 import type { CertificationFormData } from "../shared/types";
 import { MONTHS_LONG, PAST_YEARS, FUTURE_YEARS } from "../shared/constants";
 import { CertBadgeIcon, InfoIcon, LinkIcon, CalendarIcon, ChevronDownIcon, UploadCloudIcon, SpinnerIcon } from "../shared/icons";
@@ -40,6 +40,9 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
   const [errors, setErrors]     = useState<Partial<Record<keyof CertificationFormData, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile]   = useState<File | null>(null);
+  const [existingFileKey, setExistingFileKey] = useState<string | null>(editCert?.certificateFileKey ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof CertificationFormData>(k: K, v: CertificationFormData[K]) => {
     setForm(f => ({ ...f, [k]: v }));
@@ -93,17 +96,29 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
       } else {
         certId = await addCertification(payload);
       }
+
+      let certificateFileKey: string | undefined;
+      if (selectedFile) {
+        try {
+          await uploadCertificateFile(certId, selectedFile);
+          certificateFileKey = `uploaded:${selectedFile.name}`;
+        } catch {
+          // Non-fatal — cert saved; file upload failed silently
+        }
+      }
+
       onSaved({
         id: certId,
-        name:            form.name.trim(),
-        institution:     form.institution.trim(),
-        credentialId:    form.credentialId.trim()   || undefined,
-        certificateUrl:  form.certificateUrl.trim() || undefined,
-        passedYear:      form.passedYear,
-        validTill:       validTillDisplay,
-        doesNotExpire:   form.doesNotExpire,
-        description:     form.description.trim() || undefined,
+        name:             form.name.trim(),
+        institution:      form.institution.trim(),
+        credentialId:     form.credentialId.trim()   || undefined,
+        certificateUrl:   form.certificateUrl.trim() || undefined,
+        passedYear:       form.passedYear,
+        validTill:        validTillDisplay,
+        doesNotExpire:    form.doesNotExpire,
+        description:      form.description.trim() || undefined,
         displayOnProfile: form.displayOnProfile,
+        certificateFileKey,
       });
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Failed to save certification");
@@ -269,18 +284,66 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
             <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
               Certificate <span className="text-ink-400 font-normal">(Optional)</span>
             </label>
-            <div className="rounded-xl border-2 border-dashed border-brand-200 bg-brand-50/20 px-6 py-6 flex items-center gap-4 cursor-pointer hover:bg-brand-50/40 hover:border-brand-400 transition group">
-              <div className="w-12 h-12 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center shrink-0 group-hover:bg-brand-200 transition">
-                <UploadCloudIcon />
-              </div>
-              <div>
-                <div className="text-[13.5px] font-semibold text-ink-700">
-                  Drag &amp; drop file here or{" "}
-                  <span className="text-brand-600 hover:text-brand-700">browse</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              aria-label="Upload certificate file"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (file && file.size > 5 * 1024 * 1024) {
+                  setApiError("Certificate file must be 5 MB or smaller.");
+                  return;
+                }
+                setSelectedFile(file);
+                setExistingFileKey(null);
+                setApiError(null);
+              }}
+            />
+            {(() => {
+              const hasFile = selectedFile || existingFileKey;
+              const label   = selectedFile ? selectedFile.name : existingFileKey?.split("/").pop() ?? "Uploaded document";
+              return (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Select certificate file"
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                  className={`rounded-xl border-2 border-dashed px-6 py-6 flex items-center gap-4 cursor-pointer transition group
+                    ${hasFile
+                      ? "border-green-300 bg-green-50/30 hover:border-green-400"
+                      : "border-brand-200 bg-brand-50/20 hover:bg-brand-50/40 hover:border-brand-400"}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition
+                    ${hasFile ? "bg-green-100 text-green-600" : "bg-brand-100 text-brand-600 group-hover:bg-brand-200"}`}>
+                    {hasFile ? (
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <UploadCloudIcon />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    {hasFile ? (
+                      <>
+                        <div className="text-[13.5px] font-semibold text-green-700 truncate">{label}</div>
+                        <div className="text-[12px] text-ink-500 mt-0.5">Click to replace file</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[13.5px] font-semibold text-ink-700">
+                          Drag &amp; drop file here or{" "}
+                          <span className="text-brand-600">browse</span>
+                        </div>
+                        <div className="text-[12px] text-ink-500 mt-0.5">Supports PDF, JPG, PNG (Max 5 MB)</div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[12px] text-ink-500 mt-0.5">Supports PDF, JPG, PNG (Max 5MB)</div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 

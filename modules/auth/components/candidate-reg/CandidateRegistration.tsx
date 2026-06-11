@@ -20,7 +20,7 @@ const INITIAL_DATA: CandidateRegData = {
     hearAboutUs: "",
     acceptTerms: false,
   },
-  step2: { education: [], experience: [] },
+  step2: { education: [], experience: [], resumeFileKey: "" },
   step3: {
     skills: [],
     certifications: [],
@@ -38,8 +38,14 @@ const INITIAL_DATA: CandidateRegData = {
 
 export default function CandidateRegistration() {
   const [step, setStep]           = useState(1);
+  const [maxStep, setMaxStep]     = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [data, setData]           = useState<CandidateRegData>(INITIAL_DATA);
+
+  const handleStepChange = (newStep: number) => {
+    setStep(newStep);
+    setMaxStep((prev) => Math.max(prev, newStep));
+  };
 
   if (submitted) {
     const fullName =
@@ -63,8 +69,9 @@ export default function CandidateRegistration() {
         <CandidateSidebar step={currentStep} />
         <CandidateFormPanel
           currentStep={currentStep}
+          maxStep={maxStep}
           data={data}
-          onStepChange={setStep}
+          onStepChange={handleStepChange}
           onDataChange={setData}
           onSubmit={() => setSubmitted(true)}
         />

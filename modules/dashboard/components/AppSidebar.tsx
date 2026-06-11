@@ -67,7 +67,7 @@ export default function AppSidebar() {
             ) : profile?.fullName ? (
               profile.fullName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
             ) : (
-              <Image src="/images/candidate.png" alt="Profile" fill className="object-cover" />
+              <Image src="/images/candidate.png" alt="Profile" width={56} height={56} className="object-cover" priority />
             )}
           </div>
           <div className="min-w-0">

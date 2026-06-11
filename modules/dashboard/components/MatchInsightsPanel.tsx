@@ -46,9 +46,9 @@ export default function MatchInsightsPanel() {
         </div>
       </div>
 
-      <button className="mt-4 w-full py-2.5 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition-colors">
+      <a href="/improve-match" className="mt-4 w-full py-2.5 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition-colors block text-center">
         Improve Your Match
-      </button>
+      </a>
     </div>
   );
 }
