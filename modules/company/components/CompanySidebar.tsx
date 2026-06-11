@@ -15,7 +15,7 @@ export default function CompanySidebar() {
 
   const items: NavItem[] = [
     { href: "/company/dashboard",  label: "Dashboard",          icon: <DashboardIcon /> },
-    { href: "/company/jobs",       label: "Jobs",               icon: <JobsIcon /> },
+    { href: "/company/jobs/new",   label: "Jobs",               icon: <JobsIcon /> },
     { href: "/company/candidates", label: "Candidates",         icon: <UsersIcon /> },
     { href: "/company/clients",    label: "Clients",            icon: <BuildingIcon /> },
     { href: "/company/applications", label: "Applications",     icon: <DocIcon /> },
