@@ -53,6 +53,7 @@ export default function EducationSection({ education, onChange }: Props) {
           }}
           editId={eduModal.editId}
           initialData={eduModal.initialData}
+          existingAttachments={eduModal.existingAttachments}
         />
       )}
 
@@ -98,6 +99,7 @@ export default function EducationSection({ education, onChange }: Props) {
                               yearOfPassing: edu.yearOfPassing, grade: edu.grade,
                               educationType: edu.educationType, description: edu.description,
                             },
+                            existingAttachments: edu.attachmentFileKeys ?? [],
                           })}
                           className="p-1.5 rounded-lg hover:bg-brand-50 text-ink-400 hover:text-brand-600 transition">
                           <EditIcon />

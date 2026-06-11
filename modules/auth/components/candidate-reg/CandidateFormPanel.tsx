@@ -9,6 +9,7 @@ import type { CandidateRegData } from "../../types/auth.types";
 
 interface CandidateFormPanelProps {
   currentStep: number;
+  maxStep: number;
   data: CandidateRegData;
   onStepChange: (step: number) => void;
   onDataChange: (data: CandidateRegData) => void;
@@ -24,6 +25,7 @@ const FORM_TITLES: Record<number, string> = {
 
 export default function CandidateFormPanel({
   currentStep,
+  maxStep,
   data,
   onStepChange,
   onDataChange,
@@ -44,6 +46,7 @@ export default function CandidateFormPanel({
             data={data.step1}
             onChange={(step1) => onDataChange({ ...data, step1 })}
             onNext={() => onStepChange(2)}
+            isReturning={maxStep > 1}
           />
         )}
         {currentStep === 2 && (

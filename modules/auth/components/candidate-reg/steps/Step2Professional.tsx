@@ -35,13 +35,14 @@ function fmtDate(mmYYYY: string): string {
 export default function Step2Professional({ data, onChange, onNext, onBack }: Props) {
   const [education, setEducation]     = useState(data.education);
   const [experience, setExperience]   = useState<Experience[]>(data.experience);
+  const [resumeFileKey, setResumeFileKey] = useState(data.resumeFileKey);
   const [expandedExp, setExpandedExp] = useState<Set<string>>(new Set(data.experience.map((e) => e.id)));
   const [deletingExpId, setDeletingExpId] = useState<string | null>(null);
   const [expModal, setExpModal]       = useState<ExpModalState>({ open: false });
   const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
 
-  const handleNext = () => { onChange({ education, experience }); onNext(); };
-  const handleBack = () => { onChange({ education, experience }); onBack(); };
+  const handleNext = () => { onChange({ education, experience, resumeFileKey }); onNext(); };
+  const handleBack = () => { onChange({ education, experience, resumeFileKey }); onBack(); };
 
   const handleDeleteExperience = async (id: string) => {
     resetConfirm();
@@ -133,7 +134,10 @@ export default function Step2Professional({ data, onChange, onNext, onBack }: Pr
       </section>
 
       {/* ── Upload Resume Banner ── */}
-      <UploadResumeBanner />
+      <UploadResumeBanner
+        resumeFileKey={resumeFileKey || undefined}
+        onUploaded={(_fileName, key) => setResumeFileKey(key ?? "")}
+      />
 
       {/* ── Actions ── */}
       <StepActions onBack={handleBack} onNext={handleNext} />

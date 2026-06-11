@@ -65,6 +65,7 @@ export interface EduModalState {
   open: boolean;
   editId?: string;
   initialData?: Partial<Education>;
+  existingAttachments?: string[];
 }
 
 export interface ConfirmState {

@@ -1,23 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   fetchDegreeCourses,
   fetchEducationTypes,
   addEducation,
   updateEducation,
+  uploadEducationFile,
   type DegreeCourse,
   type EducationTypeItem,
 } from "../../../services/candidate.service";
 import type { Education } from "../../../types/auth.types";
 import type { EducationFormData } from "../shared/types";
-import { ChevronDownIcon, CalendarIcon, UploadCloudIcon, SpinnerIcon } from "../shared/icons";
+import { ChevronDownIcon, CalendarIcon, UploadCloudIcon, SpinnerIcon, TrashSmIcon } from "../shared/icons";
 
 interface Props {
   onClose: () => void;
   onSaved: (education: Education) => void;
   editId?: string;
   initialData?: Partial<EducationFormData>;
+  existingAttachments?: string[];
 }
 
 const EMPTY: EducationFormData = {
@@ -25,11 +27,15 @@ const EMPTY: EducationFormData = {
   yearOfPassing: "", grade: "", educationType: "", description: "",
 };
 
-export default function AddEducationModal({ onClose, onSaved, editId, initialData }: Props) {
+export default function AddEducationModal({ onClose, onSaved, editId, initialData, existingAttachments = [] }: Props) {
   const [form, setForm]         = useState<EducationFormData>({ ...EMPTY, ...initialData });
   const [errors, setErrors]     = useState<Partial<Record<keyof EducationFormData, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newFiles, setNewFiles]                 = useState<File[]>([]);
+  const [keptExistingKeys, setKeptExistingKeys] = useState<string[]>(existingAttachments);
 
   const [degrees, setDegrees]         = useState<DegreeCourse[]>([]);
   const [eduTypes, setEduTypes]       = useState<EducationTypeItem[]>([]);
@@ -84,16 +90,25 @@ export default function AddEducationModal({ onClose, onSaved, editId, initialDat
       } else {
         backendId = await addEducation(payload);
       }
+      let latestKeys: string[] = [...keptExistingKeys];
+      for (const file of newFiles) {
+        try {
+          latestKeys = await uploadEducationFile(backendId, file);
+        } catch {
+          // non-fatal — education saved even if a file upload fails
+        }
+      }
       onSaved({
-        id:            backendId,
-        degree:        form.degree,
-        institution:   form.institution.trim(),
-        specialization: form.specialization.trim(),
-        location:      form.location.trim(),
-        yearOfPassing: form.yearOfPassing.trim(),
-        grade:         form.grade.trim(),
-        educationType: form.educationType,
-        description:   form.description.trim(),
+        id:                 backendId,
+        degree:             form.degree,
+        institution:        form.institution.trim(),
+        specialization:     form.specialization.trim(),
+        location:           form.location.trim(),
+        yearOfPassing:      form.yearOfPassing.trim(),
+        grade:              form.grade.trim(),
+        educationType:      form.educationType,
+        description:        form.description.trim(),
+        attachmentFileKeys: latestKeys,
       });
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Failed to save education");
@@ -212,13 +227,63 @@ export default function AddEducationModal({ onClose, onSaved, editId, initialDat
           {/* Attachments */}
           <div>
             <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">Attachments <span className="text-ink-400 font-normal">(Optional)</span></label>
-            <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 px-4 py-4 flex items-center gap-3 cursor-pointer hover:bg-brand-50/30 hover:border-brand-300 transition">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                setNewFiles((prev) => [...prev, ...picked]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full rounded-xl border border-dashed border-ink-300 bg-ink-50/40 px-4 py-4 flex items-center gap-3 hover:bg-brand-50/30 hover:border-brand-300 transition text-left">
               <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center shrink-0"><UploadCloudIcon /></div>
               <div>
                 <div className="text-[13px] font-semibold text-ink-700">Upload supporting documents (Marksheet, Certificate, etc.)</div>
-                <div className="text-[11.5px] text-ink-400 mt-0.5">PDF, DOC, DOCX only &nbsp;•&nbsp; Max size: 5MB</div>
+                <div className="text-[11.5px] text-ink-400 mt-0.5">PDF, DOC, DOCX only &nbsp;•&nbsp; Max size: 5MB &nbsp;•&nbsp; Multiple files allowed</div>
               </div>
-            </div>
+            </button>
+
+            {/* Kept existing attachments */}
+            {keptExistingKeys.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {keptExistingKeys.map((key) => {
+                  const name = key.split("/").pop() ?? key;
+                  return (
+                    <li key={key} className="flex items-center justify-between px-3 py-2 rounded-xl bg-ink-50 border border-ink-100 text-[12.5px] text-ink-700">
+                      <span className="truncate max-w-[440px]">{name}</span>
+                      <button type="button" aria-label={`Remove ${name}`}
+                        onClick={() => setKeptExistingKeys((prev) => prev.filter((k) => k !== key))}
+                        className="ml-2 text-ink-400 hover:text-red-500 transition shrink-0">
+                        <TrashSmIcon />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Newly selected files */}
+            {newFiles.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {newFiles.map((file, idx) => (
+                  <li key={`${file.name}-${idx}`} className="flex items-center justify-between px-3 py-2 rounded-xl bg-brand-50 border border-brand-100 text-[12.5px] text-ink-700">
+                    <span className="truncate max-w-[440px]">{file.name}</span>
+                    <button type="button" aria-label={`Remove ${file.name}`}
+                      onClick={() => setNewFiles((prev) => prev.filter((_, i) => i !== idx))}
+                      className="ml-2 text-ink-400 hover:text-red-500 transition shrink-0">
+                      <TrashSmIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

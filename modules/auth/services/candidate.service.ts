@@ -15,6 +15,17 @@ async function authedFetch(path: string, options: RequestInit = {}): Promise<Res
   });
 }
 
+/** Multipart upload — omits Content-Type so the browser sets the boundary. */
+async function authedUpload(path: string, formData: FormData): Promise<Response> {
+  const token = getAccessToken();
+  if (!token) throw new Error("No access token");
+  return fetch(`${API.CANDIDATE}${path}`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}` },
+    body: formData,
+  });
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 401 || res.status === 403) {
     if (typeof window !== "undefined") { window.location.href = "/login"; }
@@ -85,6 +96,7 @@ export interface EducationProfile {
   yearOfPassing: string | null;
   grade: string | null;
   educationType: string | null;
+  attachmentFileKeys?: string[] | null;
 }
 
 export interface SkillProfile {
@@ -102,6 +114,7 @@ export interface CertificationProfile {
   passedYear: number | null;
   validTill: string | null;
   doesNotExpire: boolean;
+  certificateFileKey?: string | null;
 }
 
 export interface PreferenceProfile {
@@ -127,6 +140,7 @@ export interface FullProfile {
   preferredLocation: string | null;
   openToRelocate: boolean;
   additionalPreferences: string | null;
+  resumeFileKey: string | null;
   workExperiences: WorkExperienceProfile[];
   educations: EducationProfile[];
   skills: SkillProfile[];
@@ -429,5 +443,32 @@ export async function deleteWorkExperience(id: string): Promise<void> {
   const res = await authedFetch(`/profile/work-experiences/${id}`, {
     method: "DELETE",
   });
+  await handleResponse<unknown>(res);
+}
+
+/* ── File uploads ── */
+
+/** POST /profile/educations/:id/upload — uploads attachment, returns updated S3 keys for that record */
+export async function uploadEducationFile(eduId: string, file: File): Promise<string[]> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await authedUpload(`/profile/educations/${eduId}/upload`, formData);
+  const profile = await handleResponse<{ educations: { id: string; attachmentFileKeys?: string[] | null }[] }>(res);
+  return profile.educations?.find((e) => e.id === eduId)?.attachmentFileKeys ?? [];
+}
+
+export async function uploadResume(file: File): Promise<string | null> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await authedUpload("/profile/resume/upload", formData);
+  const profile = await handleResponse<{ resumeFileKey?: string | null }>(res);
+  return profile?.resumeFileKey ?? null;
+}
+
+/** POST /profile/certifications/:id/upload — uploads cert document to S3 */
+export async function uploadCertificateFile(certId: string, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await authedUpload(`/profile/certifications/${certId}/upload`, formData);
   await handleResponse<unknown>(res);
 }
