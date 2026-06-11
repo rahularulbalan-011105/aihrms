@@ -163,7 +163,7 @@ export default function AppHeader() {
     <header className="shrink-0 flex bg-white border-b border-ink-200 min-h-[72px]">
 
       {/* ── Logo zone — mirrors sidebar width ── */}
-      <div className="w-[260px] shrink-0 flex items-center px-6 h-[72px] bg-brand-50/60 border-r border-ink-200">
+      <div className="w-[260px] shrink-0 flex items-center px-6 h-[72px] bg-white border-r border-ink-200">
         <Link href="/">
           <BrandLogo size="md" />
         </Link>
