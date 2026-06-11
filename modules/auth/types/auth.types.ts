@@ -34,6 +34,7 @@ export interface Education {
   grade: string;
   educationType: string;
   description: string;
+  attachmentFileKeys?: string[];
 }
 
 export interface Project {
@@ -73,6 +74,7 @@ export interface Certification {
   doesNotExpire: boolean;
   description?: string;
   displayOnProfile: boolean;
+  certificateFileKey?: string;
 }
 
 export interface Skill {
@@ -103,6 +105,7 @@ export interface CandidateRegStep1Data {
 export interface CandidateRegStep2Data {
   education: Education[];
   experience: Experience[];
+  resumeFileKey: string;
 }
 
 export interface CandidateRegStep3Data {

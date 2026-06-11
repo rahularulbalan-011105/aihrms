@@ -81,6 +81,41 @@ Shared library: `/Users/femilam/Project/backend/hiremind/core_module` — `ApiRe
 
 All return `ApiResponse<List<{name}>>`. Employment types: `FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP, FREELANCE, REMOTE, HYBRID`.
 
+### S3 File Storage (core_module)
+S3 support lives in `core_module/src/main/java/com/hiremind/core/storage/`:
+- **`S3StorageService`** — interface: `upload(folder, filename, file)` → S3 key; `createPresignedReadUrl(key, ttl)` → URI
+- **`AwsS3StorageService`** — real impl (AWS SDK v2); uses `StaticCredentialsProvider` when `hiremind.storage.s3.access.key` + `secret.key` are set, otherwise falls back to `DefaultCredentialsProvider`; activated when `hiremind.storage.s3.bucket` is non-blank
+- **`NoopS3StorageService`** — throws `BusinessException("S3_NOT_CONFIGURED")` when bucket is empty
+- **`S3StorageAutoConfiguration`** — injects `Environment` to read credentials (bypasses `@ConfigurationProperties` record binding limitation); auto-configures: real impl if bucket set, noop otherwise
+
+S3 config in `candidate_api/application.properties`:
+```properties
+hiremind.storage.s3.bucket=hiremind-s3   # set to your bucket name to activate real S3
+hiremind.storage.s3.region=ap-south-1
+hiremind.storage.s3.base-folder=hiremind/${spring.profiles.active:local}
+hiremind.storage.s3.access.key=          # explicit creds; omit to use DefaultCredentialsProvider
+hiremind.storage.s3.secret.key=
+spring.profiles.active=local             # controls env prefix: local | dev | prod
+```
+
+> **S3 path format:** `{baseFolder}/resumes/{profileId}/...` → e.g. `hiremind/local/resumes/{id}/...`
+
+### File Upload Endpoints (candidate_api — authed)
+| Endpoint | Method | Description |
+|---|---|---|
+| `POST /profile/resume/upload` | `uploadResume()` | Multipart — stores key in `candidate.resume_file_key` |
+| `POST /profile/certifications/{id}/upload` | `uploadCertificateFile()` | Multipart — stores key in `certification.certificate_file_key` |
+| `POST /profile/educations/{id}/upload` | `uploadEducationFile()` | Multipart — appends key to `candidate_educations.attachment_file_keys` (comma-separated TEXT) |
+
+All accept `@RequestParam("file") MultipartFile file`. S3 key format:
+- Resume: `{baseFolder}/resumes/{profileId}/{profileId}_resume_{filename}`
+- Cert doc: `{baseFolder}/certificates/{profileId}/{certId}_{filename}`
+- Edu attachment: `{baseFolder}/educations/{profileId}/{eduId}_{filename}`
+
+**DB migrations:**
+- `V4__add_resume_file_key.sql` — adds `resume_file_key VARCHAR(500)` to `candidate` table
+- `V5__add_education_attachments.sql` — adds `attachment_file_keys TEXT` to `candidate_educations` table (comma-separated S3 keys)
+
 ### CORS — Next.js Proxy Rewrites
 ```
 Browser → /api/users/*     → Next.js rewrite → host.docker.internal:5001/user-service/*
@@ -167,18 +202,20 @@ hiremind_web/
 │   └── dashboard/
 │       ├── DashboardPage.tsx          # "use client" orchestrator — stats, search bar, job tabs, right sidebar
 │       ├── ProfilePage.tsx            # "use client" orchestrator — 3-column profile layout
+│       ├── EditProfilePage.tsx        # "use client" — 4-tab edit page; reuses reg sections; maps FullProfile → reg types
+│       ├── ImproveMatchPage.tsx       # "use client" — match score breakdown, key areas accordion, actions panel
 │       ├── context/
 │       │   └── ProfileContext.tsx     # Single profile fetch (useRef guard); shared via useProfile()
 │       └── components/
-│           ├── AppHeader.tsx          # "use client" — full-width h-[72px] header, greeting + logout dropdown
+│           ├── AppHeader.tsx          # "use client" — full-width h-[72px] header, logo zone bg-white, greeting + logout dropdown
 │           ├── AppSidebar.tsx         # "use client" — left nav, profile card, premium upsell
 │           ├── StatCard.tsx           # Reusable stat tile
 │           ├── JobCard.tsx            # Job listing card with match %, fake/ghost badges
-│           ├── MatchInsightsPanel.tsx # Donut chart (conic-gradient) + legend side-by-side
+│           ├── MatchInsightsPanel.tsx # Donut chart (conic-gradient) + legend + "Improve Your Match" link
 │           ├── JobAlertsPanel.tsx     # "use client" — toggleable alerts
 │           ├── CareerTipsPanel.tsx    # Static career tips list
 │           └── profile/
-│               ├── ProfileLeftPanel.tsx    # Back link, avatar, contact, strength ring, section nav
+│               ├── ProfileLeftPanel.tsx    # Back link (inside profile card), avatar, contact, strength ring, section nav; accepts backHref/backLabel props
 │               ├── ProfileOverviewCard.tsx # 8-field grid + match score donut with progress bars
 │               └── ProfileRightPanel.tsx   # Highlights, key strengths, documents, need help
 │
@@ -206,6 +243,8 @@ hiremind_web/
 | `/register/candidate` | 4-step candidate registration | ✅ Built + API wired |
 | `/dashboard` | Candidate dashboard | ✅ Built + API wired |
 | `/profile` | Candidate profile overview | ✅ Built + API wired |
+| `/profile/edit` | Candidate profile edit (4 tabs) | ✅ Built + API wired |
+| `/improve-match` | Improve match score page | ✅ Built (mock data) |
 | `/jobs` | Job listings | ⏳ Pending |
 | `/candidates` | Candidate search (recruiter) | ⏳ Pending |
 | `/company` | Company profile | ⏳ Pending |
@@ -264,14 +303,24 @@ Use `@utility` directive in `globals.css` — plain CSS class selectors are NOT 
 ```
 
 ### Profile page layout pattern
-`ProfilePage` lives in `(app-wide)` — full width, no AppSidebar. It renders a 3-column layout:
-- **Left panel** (`w-[240px]`) — `ProfileLeftPanel`: back link, avatar, contact, strength ring, section nav. Receives all data as props — does **not** call `useProfile()`.
-- **Centre** (`flex-1`) — overview card, professional summary, experience, education, skills (stacked)
-- **Right panel** (`w-[260px]`) — `ProfileRightPanel`: highlights, key strengths, documents, support
+Both `ProfilePage` and `EditProfilePage` live in `(app-wide)` — full width, no AppSidebar. Both render the same 3-column layout:
+- **Left panel** (`w-[240px]`) — `ProfileLeftPanel`: back link (inside profile card), avatar, contact, strength ring, section nav. Accepts `backHref` and `backLabel` props (defaults: `/dashboard` / "Back to Dashboard"). `ProfilePage` uses defaults; `EditProfilePage` passes `backHref="/profile"` / `backLabel="Back to Profile"`.
+- **Centre** (`flex-1`) — `ProfilePage`: overview + summary + experience + education + skills. `EditProfilePage`: 4-tab editor (Basic Info, Experience & Education, Skills & Certifications, Preferences).
+- **Right panel** (`w-[260px]`) — `ProfileRightPanel` (same in both pages)
 
-`ProfilePage` uses `fetchFullProfile()` with a `useRef(false)` guard — single API call, StrictMode-safe. Data flows down as props; no context needed.
+Both pages use `fetchFullProfile()` with a `useRef(false)` guard. `EditProfilePage` maps `FullProfile` → registration types on load to pre-populate existing section components.
 
 The in-page section nav in `ProfileLeftPanel` links to sub-routes (`/profile/experience`, `/profile/education`, etc.) — these pages are **pending implementation**.
+
+### Edit Profile — data mapping (`EditProfilePage.tsx`)
+On load, `FullProfile` is mapped to registration types so existing modal-based sections work unchanged:
+- `WorkExperienceProfile` → `Experience`: ISO dates → `MM/YYYY`, enum names → display labels via `toLabel()`
+- `EducationProfile` → `Education`: nullable fields default to `""`
+- `SkillProfile` → `Skill`: proficiency reverse-mapped (`BEGINNER` → `"Beginner"`, etc.)
+- `CertificationProfile` → `Certification`: `validTill` ISO → `"Month YYYY"` display format
+- `FullProfile` scalars + `PreferenceProfile[]` → `PreferencesData`; preferences filtered by `type === "ROLE" | "EMPLOYMENT_TYPE" | "BENEFIT"`
+
+Each tab saves independently via existing APIs — no "Save All" button.
 
 ### Shared utilities — lib/utils.ts
 `lib/utils.ts` is the home for cross-cutting utility functions:
@@ -354,10 +403,15 @@ Both `LoginPage.tsx` and `LoginForm.tsx` call `loginUser()` in `auth.service.ts`
 
 > `authService.login` (mock stub) has been removed. Always use `loginUser()`.
 
-### Registration — Step 1 (with rollback)
-1. `registerCandidateUser(data)` → `POST /api/users/auth/register` → stores tokens + **`hiremind_user_name`**
-2. `updateCandidateBasicInfo(data)` → `PUT /api/candidate/profile/basic-info`
-3. If step 2 fails → `deleteCurrentUser()` → `DELETE /api/users/users/me` (rollback)
+### Registration — Step 1 (with OTP verification + rollback)
+1. User enters email + phone → clicks "Send OTP" for each → OTP verified → `VerifiedIcon` shown
+2. `registerCandidateUser(data)` → `POST /api/users/auth/register` → stores tokens + **`hiremind_user_name`**
+3. `updateCandidateBasicInfo(data)` → `PUT /api/candidate/profile/basic-info`
+4. If step 3 fails → `deleteCurrentUser()` → `DELETE /api/users/users/me` (rollback)
+
+**Back-navigation guard (`isReturning` prop):**
+- `CandidateRegistration` tracks `maxStep` (highest step reached); `CandidateFormPanel` passes `isReturning={maxStep > 1}` to `Step1BasicInfo`
+- When `isReturning=true`: email + phone fields are **disabled**, OTP UI hidden, registration + rollback skipped on Continue — only `updateCandidateBasicInfo` runs
 
 Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"` — never hardcoded.
 
@@ -365,13 +419,55 @@ Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"
 - `fetchCandidateProfile()` → `GET /api/candidate/profile` (authed) — used by `ProfileContext` in `(app)` shell
 - Response mapped to `CandidateProfile`: `fullName`, `jobTitle`, `currentLocation`, `phoneNumber`, `profilePicture`
 - On success: syncs `hiremind_user_name` and `hiremind_job_title` to localStorage
-- `fetchFullProfile()` → same `GET /api/candidate/profile` endpoint — used by `ProfilePage` in `(app-wide)` shell; returns `FullProfile` with all nested arrays (workExperiences, educations, skills, certifications, preferences) plus scalar preference fields (`noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation`, `openToRelocate`, `additionalPreferences`)
+- `fetchFullProfile()` → same `GET /api/candidate/profile` endpoint — used by `ProfilePage` in `(app-wide)` shell; returns `FullProfile` with all nested arrays (workExperiences, educations, skills, certifications, preferences) plus scalar fields (`noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation`, `openToRelocate`, `additionalPreferences`, `resumeFileKey`)
 
 ### Auth / Session — 401/403 Handling
 `authedFetch` in `candidate.service.ts` redirects to `/login` on any `401` or `403`. Access token TTL: **1440 min** in dev (`users_api/application.properties`).
 
 ### Step 2 — Education & Experience
 See original detailed docs — APIs unchanged.
+
+### S3 File Uploads (frontend)
+
+`candidate.service.ts` exposes upload functions and a multipart helper:
+
+```ts
+// Multipart helper — omits Content-Type so the browser sets the boundary
+authedUpload(path, formData)   // internal — do not import directly
+
+// Public API
+uploadResume(file: File): Promise<string | null>          // returns resumeFileKey
+uploadCertificateFile(certId: string, file: File): Promise<void>
+uploadEducationFile(eduId: string, file: File): Promise<void>
+```
+
+**`UploadResumeBanner`** (`sections/UploadResumeBanner.tsx`):
+- Props: `resumeFileKey?: string` (truthy → starts in success state), `onUploaded?: (fileName, resumeFileKey) => void`
+- Validates type (PDF, DOCX only) and size (≤ 5 MB) before uploading
+- States: idle → uploading (spinner) → success (green, "Replace" button) / error (red message)
+- `onUploaded` receives both file name and the S3 key returned by the API; Step2 stores key in `data.resumeFileKey`
+
+**`AddCertificationModal`** — file upload flow:
+1. User picks file from wired drop zone (click to browse); edit mode pre-populates existing key
+2. `handleSave` saves cert metadata first → gets `certId`
+3. `uploadCertificateFile(certId, file)` runs after — **non-fatal**: cert is saved even if upload fails
+4. `onSaved` callback includes `certificateFileKey` if upload succeeded
+
+**`AddEducationModal`** — multi-attachment flow:
+1. Hidden `<input type="file" multiple>` triggered by the drop zone button
+2. New files shown in blue list; existing S3 keys shown from `existingAttachments` prop (populated from `edu.attachmentFileKeys` on edit)
+3. Each file/key has an individual remove button
+4. `handleSave` uploads each file in `newFiles` after saving education — **non-fatal** per file
+5. `onSaved` returns `attachmentFileKeys: [...keptExistingKeys, ...uploadedFileNames]`
+6. `EduModalState` (shared/types.ts) includes `existingAttachments?: string[]`; `EducationSection` passes `edu.attachmentFileKeys` when opening edit
+
+**Type changes:**
+- `Certification` (auth.types.ts) — added `certificateFileKey?: string`
+- `Education` (auth.types.ts) — added `attachmentFileKeys?: string[]`
+- `FullProfile` (candidate.service.ts) — added `resumeFileKey: string | null`
+- `CertificationProfile` (candidate.service.ts) — added `certificateFileKey?: string | null`
+- `EducationProfile` (candidate.service.ts) — added `attachmentFileKeys?: string[] | null`
+- `CandidateRegStep2Data` (auth.types.ts) — added `resumeFileKey: string`
 
 ### Step 3 — Skills, Certifications, Preferences
 
@@ -392,6 +488,7 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - **`Tooltip`** — `relative group/tip`; requires no `overflow-hidden` on parent
 - **`DotsIndicator`** — 5 dots filled by proficiency level
 - **`SpinnerIcon`** — shown on delete button during async ops
+- **`VerifiedIcon`** (`shared/icons.tsx`) — small green circle with checkmark; shown inline after successful OTP verification in Step1
 
 ---
 
@@ -414,21 +511,25 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - **Do not** copy the `useState<ConfirmState>` + `confirmDelete` boilerplate — use `useConfirmDelete()` from `shared/hooks.ts`
 - **Do not** use `authService.login()` — it has been removed; always call `loginUser()` from `auth.service.ts`
 - **Do not** add fake/placeholder personal data as fallback values in review or profile screens — use `"—"` for missing fields
+- **Do not** use `authedFetch` for file uploads — it forces `Content-Type: application/json` which breaks multipart boundaries. Use `authedUpload()` from `candidate.service.ts` instead
+- **Do not** set `Content-Type: multipart/form-data` manually — omit it entirely; the browser sets it with the correct boundary automatically
 
 ---
 
 ## Pending Work (Next Steps)
 
-1. **Step 2 — Education attachment upload** — wire file upload to S3 via candidate API
-2. **Step 4 — Review + Submit** — final registration submit endpoint (currently simulates delay)
-3. **Token refresh** — replace 401 redirect with silent refresh via NextAuth v5
-4. **NextAuth v5** — replace localStorage tokens with real session management
-5. **Middleware** — route protection and RBAC
-6. **Recruiter registration** — `/register/company`
-7. **Dashboard — real data** — replace mock job/stats data with live API calls
-8. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
-9. **LoginPage accessibility** — add `htmlFor`/`id` to all form labels and inputs (same pattern as `Step1BasicInfo.tsx`)
-10. **Modal accessibility** — add `htmlFor`/`id`/`aria-describedby` to all form labels/inputs in `AddExperienceModal`, `AddSkillModal`, `AddCertificationModal`, `AddEducationModal`; add `aria-label` to close buttons
-11. **candidate.service.ts split** — 434 lines with 7 mixed domains; split into `profile.service.ts`, `experience.service.ts`, `education.service.ts`, `skills.service.ts`, `certifications.service.ts`, `preferences.service.ts`, `master.service.ts`
-12. **React Query + Zustand** — install after backend integration complete
-13. **ESLint + Prettier** — code quality tooling
+1. **Profile page — resume download** — add presigned URL endpoint (`GET /profile/resume/download`) so the "Download Resume" button in `ProfilePage.tsx` can open the file; currently disabled when `resumeFileKey` is null
+2. **Edit profile — Basic Info extended fields** — `updateCandidateBasicInfo` currently ignores `linkedinUrl` (hardcoded null); add LinkedIn + currentRole/currentCompany fields once backend DTO supports them
+3. **Improve Match — real data** — wire match score, key areas, and skill suggestions from API instead of mock data
+4. **Step 4 — Review + Submit** — final registration submit endpoint (currently simulates delay)
+5. **Token refresh** — replace 401 redirect with silent refresh via NextAuth v5
+6. **NextAuth v5** — replace localStorage tokens with real session management
+7. **Middleware** — route protection and RBAC
+8. **Recruiter registration** — `/register/company`
+9. **Dashboard — real data** — replace mock job/stats data with live API calls
+10. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
+11. **LoginPage accessibility** — add `htmlFor`/`id` to all form labels and inputs (same pattern as `Step1BasicInfo.tsx`)
+12. **Modal accessibility** — add `htmlFor`/`id`/`aria-describedby` to all form labels/inputs in `AddExperienceModal`, `AddSkillModal`, `AddCertificationModal`, `AddEducationModal`; add `aria-label` to close buttons
+13. **candidate.service.ts split** — mixed domains; split into `profile.service.ts`, `experience.service.ts`, `education.service.ts`, `skills.service.ts`, `certifications.service.ts`, `preferences.service.ts`, `master.service.ts`, `upload.service.ts`
+14. **React Query + Zustand** — install after backend integration complete
+15. **ESLint + Prettier** — code quality tooling

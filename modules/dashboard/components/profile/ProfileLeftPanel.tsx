@@ -25,9 +25,11 @@ interface Props {
   phone?: string | null;
   profileStrength?: number;
   profilePicture?: string | null;
+  backHref?: string;
+  backLabel?: string;
 }
 
-export default function ProfileLeftPanel({ fullName: nameProp, jobTitle: titleProp, location: locationProp, email, phone, profileStrength, profilePicture }: Props) {
+export default function ProfileLeftPanel({ fullName: nameProp, jobTitle: titleProp, location: locationProp, email, phone, profileStrength, profilePicture, backHref = "/dashboard", backLabel = "Back to Dashboard" }: Props) {
   const pathname = usePathname();
 
   const fullName = nameProp  ?? "—";
@@ -45,16 +47,15 @@ export default function ProfileLeftPanel({ fullName: nameProp, jobTitle: titlePr
   const { text: strengthText, color: strengthColor } = strengthLabel(strength);
 
   return (
-    <aside className="w-[240px] shrink-0 flex flex-col gap-4 sticky top-6 max-h-[calc(100vh-84px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-
-      {/* Back link */}
-      <Link href="/dashboard" className="flex items-center gap-1.5 text-[12.5px] text-ink-500 hover:text-brand-600 transition-colors font-medium">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-        Back to Dashboard
-      </Link>
+    <aside className="w-[240px] shrink-0 flex flex-col gap-2 sticky top-0 max-h-[calc(100vh-84px)] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
       {/* Profile card */}
       <div className="card p-5 flex flex-col items-center text-center">
+        {/* Back link */}
+        <Link href={backHref} className="self-start flex items-center gap-1.5 text-[12px] text-ink-500 hover:text-brand-600 transition-colors font-medium mb-3">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          {backLabel}
+        </Link>
         {/* Avatar */}
         <div className="relative">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-[24px] ring-[3px] ring-brand-500 ring-offset-2">

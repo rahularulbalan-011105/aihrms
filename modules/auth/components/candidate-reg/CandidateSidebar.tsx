@@ -85,6 +85,7 @@ export default function CandidateSidebar({ step }: CandidateSidebarProps) {
           src="/images/candidate.png"
           alt="Candidate"
           fill
+          priority
           sizes="340px"
           className="object-contain object-bottom z-[1]"
         />
