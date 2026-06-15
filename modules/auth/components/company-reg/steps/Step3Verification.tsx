@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
+import { saveCompanyProfile, uploadCompanyLogo } from "@/modules/auth/services/company.service";
+import type { CompanyRegStep1Data } from "@/modules/auth/types/auth.types";
 
 interface Props {
   company: CompanyData;
@@ -15,6 +17,38 @@ interface Props {
 
 export default function Step3Verification({ company, admin, onBack, onEdit }: Props) {
   const router = useRouter();
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  async function handleComplete() {
+    setIsCompleting(true);
+    try {
+      const step1: CompanyRegStep1Data = {
+        companyName: company.companyName,
+        legalName:   company.legalName,
+        website:     company.website,
+        industry:    company.industry,
+        companySize: company.companySize,
+        foundedYear: company.foundedYear,
+        companyType: company.companyType,
+        gstNumber:   company.gstNumber,
+        panNumber:   company.panNumber,
+        country:     company.country,
+        state:       company.state,
+        city:        company.city,
+        address:     company.address,
+        about:       company.about,
+        agree:       company.agree,
+      };
+      await saveCompanyProfile(step1);
+      if (company.logoFile) {
+        await uploadCompanyLogo(company.logoFile);
+      }
+    } catch {
+      // non-fatal — profile data can be completed later in the dashboard
+    }
+    router.push("/company/dashboard");
+  }
+
   return (
     <div className="flex-1 grid lg:grid-cols-[360px_1fr]">
       {/* ─────────────── LEFT SIDEBAR ─────────────── */}
@@ -145,10 +179,14 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
                   Save & Exit
                 </button>
                 <button
-                  onClick={() => router.push("/company/dashboard")}
-                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2"
+                  onClick={handleComplete}
+                  disabled={isCompleting}
+                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-75"
                   style={{ background: "var(--gradient-brand)" }}>
-                  Verify &amp; Complete <ArrowRight />
+                  {isCompleting
+                    ? <><SpinnerIcon /> Setting up…</>
+                    : <>Verify &amp; Complete <ArrowRight /></>
+                  }
                 </button>
               </div>
             </div>
@@ -287,6 +325,14 @@ function NeedHelpCard() {
 }
 
 /* Icons */
+function SpinnerIcon() {
+  return (
+    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
 function PencilIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M16 4l4 4-11 11H5v-4L16 4z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }
 function BuildingIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" stroke="currentColor" strokeWidth="1.6" /><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
 function UserIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" /><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" stroke="currentColor" strokeWidth="1.6" /></svg>); }

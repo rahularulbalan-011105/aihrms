@@ -32,7 +32,7 @@ export default function EducationSection({ education, onChange }: Props) {
   };
 
   return (
-    <section>
+    <section className="p-5">
       {confirm.open && (
         <ConfirmDialog
           label={confirm.label}

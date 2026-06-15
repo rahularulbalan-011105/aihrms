@@ -10,7 +10,6 @@ import {
   type FullProfile,
 } from "@/modules/auth/services/candidate.service";
 import ProfileLeftPanel from "./components/profile/ProfileLeftPanel";
-import ProfileRightPanel from "./components/profile/ProfileRightPanel";
 import type {
   Education,
   Experience,
@@ -27,6 +26,7 @@ import AddExperienceModal from "@/modules/auth/components/candidate-reg/modals/A
 import AddSkillModal from "@/modules/auth/components/candidate-reg/modals/AddSkillModal";
 import { useConfirmDelete } from "@/modules/auth/components/candidate-reg/shared/hooks";
 import {
+  PersonIcon,
   BriefcaseIcon,
   BriefcaseIconLg,
   EditIcon,
@@ -126,7 +126,7 @@ function mapToExperience(exp: FullProfile["workExperiences"][0]): Experience {
       description: p.description ?? "",
       startDate: isoToMMYYYY(p.startDate),
       endDate: isoToMMYYYY(p.endDate),
-      teamSize: "",
+      teamSize: p.teamSize != null ? String(p.teamSize) : "",
       technologies: p.technologiesUsed
         ? p.technologiesUsed
             .split(",")
@@ -146,7 +146,6 @@ function mapToSkill(s: FullProfile["skills"][0]): Skill {
     experienceValue: expYears > 0 ? expYears.toString() : "",
     experienceUnit: "Years",
     lastUsed: "",
-    yearsOfExperience: Math.round(expYears),
     highlighted: s.topSkill,
     additionalDetails: "",
   };
@@ -179,7 +178,7 @@ function mapToPreferences(fp: FullProfile): PreferencesData {
     noticePeriod: fp.noticePeriod ?? "",
     expectedSalary: fp.expectedSalary ?? "",
     salaryType: fp.salaryType ?? "",
-    preferredLocation: fp.preferredLocation ?? "",
+    preferredLocations: fp.preferredLocation ? fp.preferredLocation.split(", ").map(s => s.trim()).filter(Boolean) : [],
     openToRelocate: fp.openToRelocate,
     jobRolePreferences: prefs
       .filter((p) => p.type === "ROLE")
@@ -212,6 +211,7 @@ function BasicInfoTab({ profile }: { profile: FullProfile }) {
   );
   const [location, setLocation] = useState(profile.currentLocation ?? "");
   const [linkedin, setLinkedin] = useState(profile.linkedinUrl ?? "");
+  const [summary, setSummary] = useState(profile.professionalSummary ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -230,7 +230,7 @@ function BasicInfoTab({ profile }: { profile: FullProfile }) {
         confirmPassword: "",
         dateOfBirth: "",
         currentLocation: location,
-        hearAboutUs: "",
+        professionalSummary: summary,
         acceptTerms: true,
       };
       await updateCandidateBasicInfo(payload);
@@ -263,49 +263,54 @@ function BasicInfoTab({ profile }: { profile: FullProfile }) {
   );
 
   return (
-    <div className="card p-6 space-y-4">
-      <h2 className="font-display font-bold text-[16px] text-ink-900 mb-2">
-        Basic Information
-      </h2>
+    <div className="space-y-4">
       {error && (
         <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px]">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
-        {field("First Name", firstName, setFirstName, "First name")}
-        {field("Last Name", lastName, setLastName, "Last name")}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="card p-5 space-y-4">
+        <SectionHeader icon={<PersonIcon />} title="Basic Information" addLabel="" />
+        <div className="grid grid-cols-2 gap-4">
+          {field("First Name", firstName, setFirstName, "First name")}
+          {field("Last Name", lastName, setLastName, "Last name")}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">Email</label>
+            <input
+              value={profile.email ?? ""}
+              disabled
+              className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] bg-ink-50 text-ink-400 cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">Phone</label>
+            <input
+              value={profile.phoneNumber ?? ""}
+              disabled
+              className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] bg-ink-50 text-ink-400 cursor-not-allowed"
+            />
+          </div>
+        </div>
+        {field("Current Location", location, setLocation, "City, Country")}
+        {field("LinkedIn URL", linkedin, setLinkedin, "https://linkedin.com/in/...")}
         <div>
           <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
-            Email
+            Professional Summary <span className="text-ink-400 font-normal">(Optional)</span>
           </label>
-          <input
-            value={profile.email ?? ""}
-            disabled
-            className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] bg-ink-50 text-ink-400 cursor-not-allowed"
+          <textarea
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="Briefly describe your professional background, key skills, and career goals..."
+            rows={4}
+            maxLength={2000}
+            className="w-full px-4 py-3 rounded-xl border border-ink-200 text-[13.5px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition resize-none"
           />
-        </div>
-        <div>
-          <label className="block text-[13px] font-semibold text-ink-700 mb-1.5">
-            Phone
-          </label>
-          <input
-            value={profile.phoneNumber ?? ""}
-            disabled
-            className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] bg-ink-50 text-ink-400 cursor-not-allowed"
-          />
+          <p className="mt-1 text-[11.5px] text-ink-400 text-right">{summary.length}/2000</p>
         </div>
       </div>
-      {field("Current Location", location, setLocation, "City, Country")}
-      {field(
-        "LinkedIn URL",
-        linkedin,
-        setLinkedin,
-        "https://linkedin.com/in/...",
-      )}
-      <div className="pt-2 flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={handleSave}
@@ -313,19 +318,9 @@ function BasicInfoTab({ profile }: { profile: FullProfile }) {
           className="px-8 py-2.5 rounded-xl text-white font-bold text-[13.5px] hover:opacity-95 disabled:opacity-60 flex items-center gap-2 transition"
           style={{ background: "var(--gradient-brand)" }}
         >
-          {isSaving ? (
-            <>
-              <SpinnerIcon /> Saving…
-            </>
-          ) : (
-            "Save Changes"
-          )}
+          {isSaving ? <><SpinnerIcon /> Saving…</> : "Save Changes"}
         </button>
-        {saved && (
-          <span className="text-[13px] text-green-600 font-semibold">
-            ✓ Saved
-          </span>
-        )}
+        {saved && <span className="text-[13px] text-green-600 font-semibold">✓ Saved</span>}
       </div>
     </div>
   );
@@ -500,8 +495,10 @@ function ExperienceTab({
           initialExperience={expModal.initialExperience}
         />
       )}
-      <EducationSection education={education} onChange={setEducation} />
-      <section>
+      <div className="card">
+        <EducationSection education={education} onChange={setEducation} />
+      </div>
+      <div className="card p-5">
         <SectionHeader
           icon={<BriefcaseIcon />}
           title="Professional Experience"
@@ -541,7 +538,7 @@ function ExperienceTab({
             ))}
           </div>
         )}
-      </section>
+      </div>
       <UploadResumeBanner
         resumeFileKey={resumeFileKey || undefined}
         onUploaded={(_name, key) => setResumeFileKey(key ?? "")}
@@ -608,7 +605,7 @@ function SkillsTab({
           editSkill={skillModal.editSkill}
         />
       )}
-      <section>
+      <div className="card p-5">
         <SectionHeader
           icon={<SkillsIcon />}
           title="Skills"
@@ -622,7 +619,7 @@ function SkillsTab({
             hint='Click "Add Skill" to showcase your expertise.'
           />
         ) : (
-          <div className="card overflow-hidden">
+          <div className="rounded-xl border border-ink-200 overflow-hidden">
             <table className="w-full text-[13px]">
               <thead className="bg-ink-50 border-b border-ink-100">
                 <tr>
@@ -719,11 +716,13 @@ function SkillsTab({
             </table>
           </div>
         )}
-      </section>
-      <CertificationsSection
-        certifications={certifications}
-        onChange={setCertifications}
-      />
+      </div>
+      <div className="card">
+        <CertificationsSection
+          certifications={certifications}
+          onChange={setCertifications}
+        />
+      </div>
     </div>
   );
 }
@@ -760,8 +759,10 @@ function PreferencesTab({ data }: { data: PreferencesData }) {
           {error}
         </div>
       )}
-      <PreferencesSection data={pref} onChange={setPref} />
-      <div className="flex items-center gap-3 px-1">
+      <div className="card">
+        <PreferencesSection data={pref} onChange={setPref} />
+      </div>
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={handleSave}
@@ -932,8 +933,6 @@ export default function EditProfilePage() {
         </div>
       </div>
 
-      {/* Right panel — same as ProfilePage */}
-      <ProfileRightPanel />
     </div>
   );
 }

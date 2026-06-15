@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type React from "react";
 import type { CandidateRegData } from "../../../types/auth.types";
 import { PersonIcon, BriefcaseIcon, EditIcon, ArrowLeftIcon, SpinnerIcon } from "../shared/icons";
+import { uploadProfilePicture } from "../../../services/candidate.service";
 
 interface Props {
   data: CandidateRegData;
@@ -15,6 +16,27 @@ interface Props {
 export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Props) {
   const [confirmed, setConfirmed]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [picturePreview, setPicturePreview] = useState<string | null>(null);
+  const [pictureUploading, setPictureUploading] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setPictureError("Only image files are allowed"); return; }
+    if (file.size > 5 * 1024 * 1024) { setPictureError("Image must be under 5 MB"); return; }
+    setPictureError(null);
+    setPicturePreview(URL.createObjectURL(file));
+    setPictureUploading(true);
+    try {
+      await uploadProfilePicture(file);
+    } catch {
+      setPictureError("Upload failed. You can retry after registration.");
+    } finally {
+      setPictureUploading(false);
+    }
+  };
 
   const { step1, step2, step3 } = data;
 
@@ -34,7 +56,7 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
   const noticePeriod = step3.noticePeriod    || "—";
   const salary       = step3.expectedSalary  || "—";
   const roles        = step3.jobRolePreferences;
-  const prefLocation = step3.preferredLocation || "—";
+  const prefLocation = step3.preferredLocations?.length ? step3.preferredLocations.join(", ") : "—";
   const benefits     = step3.benefits;
 
   const handleSubmit = async () => {
@@ -54,11 +76,29 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
         {/* ── Basic Information ── */}
         <SectionCard icon={<PersonIcon />} iconBg="bg-brand-50" iconColor="text-brand-600"
           title="Basic Information">
-          <div className="space-y-1">
-            <p className="font-bold text-[14.5px] text-ink-900">{fullName}</p>
-            <p className="text-[13.5px] text-ink-600">{email}</p>
-            <p className="text-[13.5px] text-ink-600">{phone}</p>
-            <p className="text-[13.5px] text-ink-600">{location}</p>
+          <div className="flex items-start gap-4">
+            {/* Avatar + upload */}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="w-16 h-16 rounded-full bg-brand-100 border-2 border-brand-200 overflow-hidden flex items-center justify-center">
+                {picturePreview
+                  ? <img src={picturePreview} alt="Profile" className="w-full h-full object-cover" />
+                  : <span className="text-brand-600 font-bold text-[22px]">{fullName[0] ?? "?"}</span>
+                }
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePictureChange} />
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={pictureUploading}
+                className="text-[11.5px] font-semibold text-brand-600 hover:text-brand-800 disabled:opacity-50 transition whitespace-nowrap">
+                {pictureUploading ? "Uploading…" : picturePreview ? "Change" : "Upload Photo"}
+              </button>
+              {pictureError && <p className="text-[11px] text-red-500 text-center max-w-[80px]">{pictureError}</p>}
+            </div>
+            {/* Details */}
+            <div className="space-y-1">
+              <p className="font-bold text-[14.5px] text-ink-900">{fullName}</p>
+              <p className="text-[13.5px] text-ink-600">{email}</p>
+              <p className="text-[13.5px] text-ink-600">{phone}</p>
+              <p className="text-[13.5px] text-ink-600">{location}</p>
+            </div>
           </div>
         </SectionCard>
 

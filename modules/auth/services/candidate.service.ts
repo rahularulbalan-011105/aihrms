@@ -71,6 +71,7 @@ export interface ProjectProfile {
   description: string | null;
   startDate: string | null;
   endDate: string | null;
+  teamSize: number | null;
   technologiesUsed: string | null;
 }
 
@@ -129,6 +130,7 @@ export interface FullProfile {
   phoneNumber: string | null;
   currentLocation: string | null;
   linkedinUrl: string | null;
+  professionalSummary: string | null;
   currentRole: string | null;
   currentCompany: string | null;
   totalExperienceYears: number | null;
@@ -141,6 +143,8 @@ export interface FullProfile {
   openToRelocate: boolean;
   additionalPreferences: string | null;
   resumeFileKey: string | null;
+  profilePictureKey: string | null;
+  profilePictureUrl: string | null;
   workExperiences: WorkExperienceProfile[];
   educations: EducationProfile[];
   skills: SkillProfile[];
@@ -167,11 +171,17 @@ export interface CandidateProfile {
 /** GET /profile — returns the logged-in candidate's full profile */
 export async function fetchCandidateProfile(): Promise<CandidateProfile> {
   const res = await authedFetch("/profile");
-  const profile = await handleResponse<CandidateProfile>(res);
-  // Keep localStorage in sync for instant display on next load
-  if (profile.fullName) setStoredUserName(profile.fullName);
-  if (profile.jobTitle) setStoredJobTitle(profile.jobTitle);
-  return profile;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = await handleResponse<any>(res);
+  if (raw.fullName) setStoredUserName(raw.fullName);
+  if (raw.currentRole) setStoredJobTitle(raw.currentRole);
+  return {
+    fullName:        raw.fullName ?? null,
+    currentLocation: raw.currentLocation ?? null,
+    phoneNumber:     raw.phoneNumber ?? null,
+    jobTitle:        raw.currentRole ?? null,
+    profilePicture:  raw.profilePictureUrl ?? null,
+  };
 }
 
 /** PUT /profile/basic-info */
@@ -184,8 +194,9 @@ export async function updateCandidateBasicInfo(data: CandidateRegStep1Data): Pro
     countryCode:     "+91",
     phoneNumber:     data.phone,
     dateOfBirth:     data.dateOfBirth || null,
-    currentLocation: data.currentLocation,
-    linkedinUrl:     null,
+    currentLocation:     data.currentLocation,
+    linkedinUrl:         null,
+    professionalSummary: data.professionalSummary || null,
   };
 
   const res = await fetch(`${API.CANDIDATE}/profile/basic-info`, {
@@ -341,7 +352,7 @@ export function buildPreferencesPayload(data: {
   noticePeriod: string;
   expectedSalary: string;
   salaryType: string;
-  preferredLocation: string;
+  preferredLocations: string[];
   openToRelocate: boolean;
   jobRolePreferences: string[];
   employmentTypes: string[];
@@ -352,7 +363,7 @@ export function buildPreferencesPayload(data: {
     noticePeriod:             data.noticePeriod || undefined,
     expectedSalary:           data.expectedSalary || undefined,
     salaryType:               data.salaryType || undefined,
-    preferredLocation:        data.preferredLocation || undefined,
+    preferredLocation:        data.preferredLocations.length ? data.preferredLocations.join(", ") : undefined,
     openToRelocate:           data.openToRelocate,
     rolePreferences:          data.jobRolePreferences.length ? data.jobRolePreferences : undefined,
     preferredEmploymentTypes: data.employmentTypes.length ? data.employmentTypes : undefined,
@@ -401,8 +412,9 @@ export interface ProjectPayload {
   projectName: string;
   roleName?: string;
   description?: string;
-  startDate?: string;       // YYYY-MM-DD
-  endDate?: string;         // YYYY-MM-DD
+  startDate?: string;        // YYYY-MM-DD
+  endDate?: string;          // YYYY-MM-DD
+  teamSize?: number;
   technologiesUsed?: string; // comma-separated
 }
 
@@ -463,6 +475,15 @@ export async function uploadResume(file: File): Promise<string | null> {
   const res = await authedUpload("/profile/resume/upload", formData);
   const profile = await handleResponse<{ resumeFileKey?: string | null }>(res);
   return profile?.resumeFileKey ?? null;
+}
+
+/** POST /profile/picture/upload — uploads profile picture to S3; returns S3 key */
+export async function uploadProfilePicture(file: File): Promise<string | null> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await authedUpload("/profile/picture/upload", formData);
+  const profile = await handleResponse<{ profilePictureKey?: string | null }>(res);
+  return profile?.profilePictureKey ?? null;
 }
 
 /** POST /profile/certifications/:id/upload — uploads cert document to S3 */

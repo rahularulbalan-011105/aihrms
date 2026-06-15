@@ -36,6 +36,7 @@ export default function CompanyRegistration() {
       {step === 2 && (
         <Step2AdminDetails
           data={admin}
+          company={company}
           onChange={setAdmin}
           onBack={() => setStep(1)}
           onContinue={() => setStep(3)}

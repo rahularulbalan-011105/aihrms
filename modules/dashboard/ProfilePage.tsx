@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   fetchFullProfile,
   type FullProfile,
@@ -10,7 +10,6 @@ import {
 } from "@/modules/auth/services/candidate.service";
 import ProfileLeftPanel    from "./components/profile/ProfileLeftPanel";
 import ProfileOverviewCard from "./components/profile/ProfileOverviewCard";
-import ProfileRightPanel   from "./components/profile/ProfileRightPanel";
 import { toLabel } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -25,7 +24,8 @@ function formatDate(iso: string | null): string {
 
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
-function ProfessionalSummary() {
+function ProfessionalSummary({ text }: { text: string | null }) {
+  if (!text) return null;
   return (
     <div className="card p-5">
       <div className="flex items-center gap-2.5 mb-3">
@@ -36,25 +36,22 @@ function ProfessionalSummary() {
         </div>
         <h2 className="font-display font-bold text-[15px] text-ink-900">Professional Summary</h2>
       </div>
-      <p className="text-[13.5px] text-ink-600 leading-relaxed">
-        Results-driven professional with hands-on experience designing, developing, and deploying
-        scalable solutions. Committed to delivering high-quality work and continuous learning.
-      </p>
+      <p className="text-[13.5px] text-ink-600 leading-relaxed">{text}</p>
     </div>
   );
 }
 
-function ExperienceSection({ experiences }: { experiences: WorkExperienceProfile[] }) {
+function ExperienceSection({ experiences, highlighted }: { experiences: WorkExperienceProfile[]; highlighted?: boolean }) {
   if (!experiences.length) return null;
   return (
     <div className="card p-5">
-      <div className="flex items-center gap-2.5 mb-4">
+      <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
         <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round">
             <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
           </svg>
         </div>
-        <h2 className="font-display font-bold text-[15px] text-ink-900">Experience</h2>
+        <h2 className={`font-display font-bold text-[15px] transition-colors duration-500 ${highlighted ? "text-brand-600" : "text-ink-900"}`}>Experience</h2>
       </div>
 
       <div className="space-y-5">
@@ -104,17 +101,17 @@ function ExperienceSection({ experiences }: { experiences: WorkExperienceProfile
   );
 }
 
-function EducationSection({ educations }: { educations: EducationProfile[] }) {
+function EducationSection({ educations, highlighted }: { educations: EducationProfile[]; highlighted?: boolean }) {
   if (!educations.length) return null;
   return (
     <div className="card p-5">
-      <div className="flex items-center gap-2.5 mb-4">
+      <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
         <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round">
             <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
           </svg>
         </div>
-        <h2 className="font-display font-bold text-[15px] text-ink-900">Education</h2>
+        <h2 className={`font-display font-bold text-[15px] transition-colors duration-500 ${highlighted ? "text-brand-600" : "text-ink-900"}`}>Education</h2>
       </div>
 
       <div className="space-y-3">
@@ -137,20 +134,20 @@ function EducationSection({ educations }: { educations: EducationProfile[] }) {
   );
 }
 
-function TopSkillsSection({ skills }: { skills: SkillProfile[] }) {
+function TopSkillsSection({ skills, highlighted }: { skills: SkillProfile[]; highlighted?: boolean }) {
   if (!skills.length) return null;
   const topSkills = skills.filter(s => s.topSkill).length ? skills.filter(s => s.topSkill) : skills;
   const displayed = topSkills.slice(0, 12);
   const extra = skills.length - displayed.length;
   return (
     <div className="card p-5">
-      <div className="flex items-center gap-2.5 mb-4">
+      <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
         <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5b34f0" strokeWidth="2" strokeLinecap="round">
             <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
           </svg>
         </div>
-        <h2 className="font-display font-bold text-[15px] text-ink-900">Top Skills</h2>
+        <h2 className={`font-display font-bold text-[15px] transition-colors duration-500 ${highlighted ? "text-brand-600" : "text-ink-900"}`}>Top Skills</h2>
       </div>
       <div className="flex flex-wrap gap-2">
         {displayed.map(s => (
@@ -207,7 +204,9 @@ export default function ProfilePage() {
   const [fullProfile, setFullProfile] = useState<FullProfile | null>(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
-  const fetched = useRef(false);
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
+  const fetched       = useRef(false);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (fetched.current) return;
@@ -216,6 +215,12 @@ export default function ProfilePage() {
       .then(setFullProfile)
       .catch(err => setError(err instanceof Error ? err.message : "Failed to load profile"))
       .finally(() => setLoading(false));
+  }, []);
+
+  const handleSectionClick = useCallback((sectionId: string) => {
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    setHighlightedSection(sectionId);
+    highlightTimer.current = setTimeout(() => setHighlightedSection(null), 1500);
   }, []);
 
   if (loading) return <ProfileSkeleton />;
@@ -231,7 +236,8 @@ export default function ProfilePage() {
         email={fullProfile?.email}
         phone={fullProfile?.phoneNumber}
         profileStrength={fullProfile?.profileStrength}
-        profilePicture={null}
+        profilePicture={fullProfile?.profilePictureUrl ?? null}
+        onSectionClick={handleSectionClick}
       />
 
       {/* Centre */}
@@ -241,39 +247,42 @@ export default function ProfilePage() {
             <h1 className="font-display font-extrabold text-[22px] text-ink-900">Profile Overview</h1>
             <p className="text-[13.5px] text-ink-500 mt-0.5">Your professional summary and key highlights.</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              disabled={!fullProfile?.resumeFileKey}
-              title={fullProfile?.resumeFileKey ? "Download your resume" : "No resume uploaded yet"}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download Resume
-            </button>
-            <a href="/profile/edit" className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-              Edit Profile
-            </a>
-          </div>
+          <a href="/profile/edit" className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity shrink-0 mt-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit Profile
+          </a>
         </div>
 
-        <ProfileOverviewCard profile={fullProfile} />
-        <ProfessionalSummary />
+        <div id="profile-overview">
+          <ProfileOverviewCard profile={fullProfile} />
+        </div>
+        <ProfessionalSummary text={fullProfile?.professionalSummary ?? null} />
 
         <div className="grid lg:grid-cols-2 gap-4">
-          <ExperienceSection experiences={fullProfile?.workExperiences ?? []} />
+          <div id="profile-experience">
+            <ExperienceSection
+              experiences={fullProfile?.workExperiences ?? []}
+              highlighted={highlightedSection === "profile-experience"}
+            />
+          </div>
           <div className="space-y-4">
-            <EducationSection educations={fullProfile?.educations ?? []} />
-            <TopSkillsSection skills={fullProfile?.skills ?? []} />
+            <div id="profile-education">
+              <EducationSection
+                educations={fullProfile?.educations ?? []}
+                highlighted={highlightedSection === "profile-education"}
+              />
+            </div>
+            <div id="profile-skills">
+              <TopSkillsSection
+                skills={fullProfile?.skills ?? []}
+                highlighted={highlightedSection === "profile-skills"}
+              />
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Right panel */}
-      <ProfileRightPanel />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { CompanyData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
@@ -10,9 +11,71 @@ interface Props {
   onContinue: () => void;
 }
 
+type FieldErrors = Partial<Record<keyof CompanyData, string>>;
+
+const LOGO_ACCEPT = ".jpg,.jpeg,.png,.svg";
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+
 export default function Step1CompanyDetails({ data, onChange, onContinue }: Props) {
-  const set = <K extends keyof CompanyData>(k: K, v: CompanyData[K]) =>
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!data.logoFile) { setLogoPreview(null); return; }
+    if (data.logoFile.type === "image/svg+xml") { setLogoPreview(null); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => setLogoPreview(e.target?.result as string);
+    reader.readAsDataURL(data.logoFile);
+  }, [data.logoFile]);
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      setLogoError("Only JPG, PNG or SVG files are allowed.");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoError("Logo must be under 2 MB.");
+      return;
+    }
+    setLogoError(null);
+    onChange({ ...data, logoFile: file });
+    e.target.value = "";
+  }
+
+  function removeLogo() {
+    onChange({ ...data, logoFile: null });
+    setLogoPreview(null);
+    setLogoError(null);
+  }
+
+  const set = <K extends keyof CompanyData>(k: K, v: CompanyData[K]) => {
     onChange({ ...data, [k]: v });
+    if (errors[k]) setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
+
+  function validate(): boolean {
+    const errs: FieldErrors = {};
+    if (!data.companyName?.trim()) errs.companyName = "Required";
+    if (!data.legalName?.trim())   errs.legalName   = "Required";
+    if (!data.industry)            errs.industry     = "Required";
+    if (!data.companySize)         errs.companySize  = "Required";
+    if (!data.companyType)         errs.companyType  = "Required";
+    if (!data.country)             errs.country      = "Required";
+    if (!data.state)               errs.state        = "Required";
+    if (!data.city?.trim())        errs.city         = "Required";
+    if (!data.address?.trim())     errs.address      = "Required";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  function handleContinue() {
+    if (validate()) onContinue();
+  }
 
   return (
     <div className="flex-1 grid lg:grid-cols-[360px_1fr]">
@@ -75,24 +138,29 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
             <Section title="Company Information">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Company / Agency Name" required icon={<BuildingIcon size={14} />}
-                  value={data.companyName} onChange={(v) => set("companyName", v)} placeholder="Enter company or agency name" />
+                  value={data.companyName} onChange={(v) => set("companyName", v)}
+                  placeholder="Enter company or agency name" error={errors.companyName} />
                 <Field label="Legal Business Name" required icon={<DocIcon />}
-                  value={data.legalName} onChange={(v) => set("legalName", v)} placeholder="Enter legal business name" />
+                  value={data.legalName} onChange={(v) => set("legalName", v)}
+                  placeholder="Enter legal business name" error={errors.legalName} />
                 <Field label="Website (Optional)" icon={<GlobeIcon />}
                   value={data.website} onChange={(v) => set("website", v)} placeholder="https://www.yourcompany.com" />
 
                 <Select label="Industry / Specialization" required icon={<BriefcaseIcon />}
                   value={data.industry} onChange={(v) => set("industry", v)} placeholder="Select primary industry"
-                  options={["IT Services & Consulting", "Finance", "Healthcare", "Manufacturing", "Education", "Other"]} />
+                  options={["IT Services & Consulting", "Finance", "Healthcare", "Manufacturing", "Education", "Other"]}
+                  error={errors.industry} />
                 <Select label="Company Size" required icon={<UsersIcon />}
                   value={data.companySize} onChange={(v) => set("companySize", v)} placeholder="Select company size"
-                  options={["1-10 Employees", "11-50 Employees", "51-200 Employees", "201-500 Employees", "500+ Employees"]} />
+                  options={["1-10 Employees", "11-50 Employees", "51-200 Employees", "201-500 Employees", "500+ Employees"]}
+                  error={errors.companySize} />
                 <Field label="Founded Year (Optional)" icon={<CalendarIcon />}
                   value={data.foundedYear} onChange={(v) => set("foundedYear", v)} placeholder="Select founded year" />
 
                 <Select label="Company Type" required icon={<TagIcon />}
                   value={data.companyType} onChange={(v) => set("companyType", v)} placeholder="Select company type"
-                  options={["Private Limited", "Public Limited", "LLP", "Partnership", "Proprietorship"]} />
+                  options={["Private Limited", "Public Limited", "LLP", "Partnership", "Proprietorship"]}
+                  error={errors.companyType} />
                 <Field label="GST Number (Optional)" icon={<DocIcon />}
                   value={data.gstNumber} onChange={(v) => set("gstNumber", v)} placeholder="Enter GST number" />
                 <Field label="PAN Number (Optional)" icon={<DocIcon />}
@@ -105,12 +173,15 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Select label="Country" required icon={<PinIcon />}
                   value={data.country} onChange={(v) => set("country", v)} placeholder="Select country"
-                  options={["India", "United States", "United Kingdom", "Singapore", "UAE"]} />
+                  options={["India", "United States", "United Kingdom", "Singapore", "UAE"]}
+                  error={errors.country} />
                 <Select label="State / Province" required icon={<PinIcon />}
                   value={data.state} onChange={(v) => set("state", v)} placeholder="Select state or province"
-                  options={["Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Telangana"]} />
+                  options={["Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Telangana"]}
+                  error={errors.state} />
                 <Field label="City" required icon={<DocIcon />}
-                  value={data.city} onChange={(v) => set("city", v)} placeholder="Enter city" />
+                  value={data.city} onChange={(v) => set("city", v)} placeholder="Enter city"
+                  error={errors.city} />
               </div>
 
               <div className="mt-4">
@@ -122,10 +193,11 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
                     rows={2}
                     maxLength={200}
                     placeholder="Enter complete office address"
-                    className="w-full px-4 py-3 pr-16 rounded-lg border border-ink-200 text-[13.5px] resize-none focus:outline-none focus:border-brand-400 placeholder:text-ink-400"
+                    className={`w-full px-4 py-3 pr-16 rounded-lg border ${errors.address ? "border-red-400" : "border-ink-200"} text-[13.5px] resize-none focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
                   />
                   <span className="absolute bottom-2.5 right-3 text-[11px] text-ink-400">{(data.address ?? "").length}/200</span>
                 </div>
+                {errors.address && <p className="mt-1 text-[11px] text-red-500" role="alert">{errors.address}</p>}
               </div>
             </Section>
 
@@ -148,13 +220,56 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
                 </div>
                 <div>
                   <Label>Company Logo (Optional)</Label>
-                  <div className="rounded-lg border border-dashed border-brand-300 bg-brand-50/40 px-6 py-7 flex flex-col items-center justify-center text-center">
-                    <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center mb-2">
-                      <UploadIcon />
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept={LOGO_ACCEPT}
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  {data.logoFile ? (
+                    <div className="rounded-lg border border-brand-200 bg-brand-50/40 px-4 py-4 flex items-center gap-4">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo preview" className="w-14 h-14 rounded-lg object-contain border border-ink-100 bg-white p-1 shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-lg border border-ink-100 bg-white flex items-center justify-center shrink-0 text-brand-700">
+                          <UploadIcon />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-ink-900 truncate">{data.logoFile.name}</div>
+                        <div className="text-[11px] text-ink-500 mt-0.5">{(data.logoFile.size / 1024).toFixed(0)} KB</div>
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          className="mt-1.5 text-[12px] font-semibold text-brand-700 hover:underline"
+                        >
+                          Change
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeLogo}
+                        aria-label="Remove logo"
+                        className="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition shrink-0"
+                      >
+                        <TrashIcon />
+                      </button>
                     </div>
-                    <div className="text-brand-700 font-semibold text-[13.5px]">Upload logo</div>
-                    <div className="text-[11px] text-ink-500 mt-0.5">JPG, PNG or SVG (Max 2MB)</div>
-                  </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="w-full rounded-lg border border-dashed border-brand-300 bg-brand-50/40 px-6 py-7 flex flex-col items-center justify-center text-center hover:border-brand-500 hover:bg-brand-50 transition"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center mb-2">
+                        <UploadIcon />
+                      </div>
+                      <div className="text-brand-700 font-semibold text-[13.5px]">Click to upload logo</div>
+                      <div className="text-[11px] text-ink-500 mt-0.5">JPG, PNG or SVG (Max 2MB)</div>
+                    </button>
+                  )}
+                  {logoError && <p className="mt-1 text-[11px] text-red-500" role="alert">{logoError}</p>}
                 </div>
               </div>
             </Section>
@@ -183,7 +298,7 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
               </Link>
               <button
                 type="button"
-                onClick={onContinue}
+                onClick={handleContinue}
                 disabled={!data.agree}
                 className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-95 transition inline-flex items-center gap-2"
                 style={{ background: "var(--gradient-brand)" }}
@@ -217,9 +332,9 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
     </label>
   );
 }
-function Field({ label, required, icon, value, onChange, placeholder }: {
+function Field({ label, required, icon, value, onChange, placeholder, error }: {
   label: string; required?: boolean; icon?: React.ReactNode;
-  value: string; onChange: (v: string) => void; placeholder?: string;
+  value: string; onChange: (v: string) => void; placeholder?: string; error?: string;
 }) {
   return (
     <div>
@@ -230,15 +345,16 @@ function Field({ label, required, icon, value, onChange, placeholder }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
+          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
         />
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-500" role="alert">{error}</p>}
     </div>
   );
 }
-function Select({ label, required, icon, value, onChange, placeholder, options }: {
+function Select({ label, required, icon, value, onChange, placeholder, options, error }: {
   label: string; required?: boolean; icon?: React.ReactNode;
-  value: string; onChange: (v: string) => void; placeholder?: string; options: string[];
+  value: string; onChange: (v: string) => void; placeholder?: string; options: string[]; error?: string;
 }) {
   return (
     <div>
@@ -248,13 +364,14 @@ function Select({ label, required, icon, value, onChange, placeholder, options }
         <select
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-9 py-2.5 rounded-lg border border-ink-200 text-[13.5px] bg-white focus:outline-none focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}
+          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-9 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] bg-white focus:outline-none focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}
         >
           <option value="" disabled>{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-500" role="alert">{error}</p>}
     </div>
   );
 }
@@ -318,3 +435,4 @@ function ChartIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" f
 function HeadsetIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1v-5zm16 0h-3v6h2a1 1 0 0 0 1-1v-5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }
 function LockIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function ArrowRight() { return (<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L8 3m5 5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
+function TrashIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }

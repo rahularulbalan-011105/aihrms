@@ -1,6 +1,7 @@
 export const API = {
   USERS:     "/api/users",
   CANDIDATE: "/api/candidate",
+  COMPANY:   "/api/company",
 } as const;
 
 const isBrowser = typeof window !== "undefined";
@@ -26,6 +27,14 @@ export const getStoredJobTitle = (): string | null =>
 export const setStoredJobTitle = (title: string) =>
   localStorage.setItem("hiremind_job_title", title);
 
+/** Company name cached at company registration time */
+export const getStoredCompanyName = (): string | null =>
+  isBrowser ? localStorage.getItem("hiremind_company_name") : null;
+
+export const setStoredCompanyName = (name: string): void => {
+  if (isBrowser) localStorage.setItem("hiremind_company_name", name);
+};
+
 /** Refresh token cached at login/register time */
 export const setRefreshToken = (token: string): void => {
   if (isBrowser) localStorage.setItem("hiremind_refresh_token", token);
@@ -39,7 +48,7 @@ export const setUserId = (id: string): void => {
 export const clearAuth = () => {
   if (!isBrowser) return;
   ["hiremind_access_token", "hiremind_refresh_token", "hiremind_user_id",
-   "hiremind_user_name", "hiremind_job_title"].forEach((k) =>
+   "hiremind_user_name", "hiremind_job_title", "hiremind_company_name"].forEach((k) =>
     localStorage.removeItem(k)
   );
 };

@@ -29,7 +29,6 @@ export default function AddSkillModal({ onClose, onSaved, addedSkills, onDeleteS
   const [expValue, setExpValue]           = useState(editSkill?.experienceValue ?? "");
   const [expUnit, setExpUnit]             = useState(editSkill?.experienceUnit ?? "Years");
   const [lastUsed, setLastUsed]           = useState(editSkill?.lastUsed ?? LAST_USED_OPTIONS[0]);
-  const [yearsOfExp, setYearsOfExp]       = useState(editSkill?.yearsOfExperience ?? 0);
   const [highlighted, setHighlighted]     = useState(editSkill?.highlighted ?? false);
   const [addDetails, setAddDetails]       = useState(editSkill?.additionalDetails ?? "");
   const [selectedColor, setSelectedColor] = useState("#6366f1");
@@ -77,7 +76,6 @@ export default function AddSkillModal({ onClose, onSaved, addedSkills, onDeleteS
       experienceValue:  expValue,
       experienceUnit:   expUnit,
       lastUsed,
-      yearsOfExperience: yearsOfExp,
       highlighted,
       additionalDetails: addDetails || undefined,
     };
@@ -220,33 +218,15 @@ export default function AddSkillModal({ onClose, onSaved, addedSkills, onDeleteS
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[13px] font-semibold text-ink-700 mb-2">
-                    Years of Experience <span className="text-ink-400 font-normal">(Optional)</span>
-                  </label>
-                  <input type="range" min={0} max={10} step={1} value={yearsOfExp}
-                    onChange={e => setYearsOfExp(Number(e.target.value))}
-                    className="w-full accent-brand-600 cursor-pointer" />
-                  <div className="flex justify-between text-[10.5px] text-ink-400 mt-1 px-0.5">
-                    {[0,1,2,3,4,5,6,7,8,9,"10+"].map((n, i) => (
-                      <span key={i} className={yearsOfExp === i ? "font-bold text-brand-600" : ""}>{n}</span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50/40">
+                <label className="flex items-center gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50/40 cursor-pointer">
                   <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-[15px] shrink-0">⭐</div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-[13px] text-ink-800">Highlight as Top Skill</div>
                     <div className="text-[11.5px] text-ink-500">This skill will be shown first to recruiters</div>
                   </div>
-                  <button type="button" onClick={() => setHighlighted(h => !h)}
-                    className={`relative rounded-full transition-colors shrink-0 ${highlighted ? "bg-brand-600" : "bg-ink-300"}`}
-                    style={{ width: 44, height: 24 }}>
-                    <span className="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow transition-transform"
-                      style={{ transform: highlighted ? "translateX(22px)" : "translateX(3px)" }} />
-                  </button>
-                </div>
+                  <input type="checkbox" checked={highlighted} onChange={e => setHighlighted(e.target.checked)}
+                    className="w-4 h-4 rounded accent-brand-600 cursor-pointer shrink-0" />
+                </label>
               </div>
 
               {/* Right column: proficiency + additional details */}

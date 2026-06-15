@@ -62,7 +62,7 @@ export async function registerCandidateUser(data: CandidateRegStep1Data): Promis
     confirmPassword: data.confirmPassword,
     dateOfBirth,
     currentLocation: data.currentLocation.trim(),
-    source:          data.hearAboutUs || null,
+    source:          null,
   };
 
   if (process.env.NODE_ENV === "development") { // C-4: no PII in production logs

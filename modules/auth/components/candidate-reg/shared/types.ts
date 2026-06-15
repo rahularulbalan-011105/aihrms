@@ -32,6 +32,7 @@ export interface ProjectForm {
   description: string;
   skills: string[];
   skillInput: string;
+  teamSize: string;
 }
 
 export interface CertificationFormData {
@@ -53,7 +54,7 @@ export interface PreferencesData {
   expectedSalary: string;
   salaryType: string;
   jobRolePreferences: string[];
-  preferredLocation: string;
+  preferredLocations: string[];
   openToRelocate: boolean;
   employmentTypes: string[];
   benefits: string[];

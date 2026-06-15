@@ -84,7 +84,6 @@ export interface Skill {
   experienceValue: string;   // "5"
   experienceUnit: string;    // "Years" | "Months"
   lastUsed: string;          // "May 2024"
-  yearsOfExperience: number; // 0–10 (slider)
   highlighted: boolean;      // Top Skill
   additionalDetails?: string;
 }
@@ -98,7 +97,7 @@ export interface CandidateRegStep1Data {
   confirmPassword: string;
   dateOfBirth: string;
   currentLocation: string;
-  hearAboutUs: string;
+  professionalSummary: string;
   acceptTerms: boolean;
 }
 
@@ -115,7 +114,7 @@ export interface CandidateRegStep3Data {
   expectedSalary: string;
   salaryType: string;
   jobRolePreferences: string[];
-  preferredLocation: string;
+  preferredLocations: string[];
   openToRelocate: boolean;
   employmentTypes: string[];
   benefits: string[];
@@ -126,4 +125,45 @@ export interface CandidateRegData {
   step1: CandidateRegStep1Data;
   step2: CandidateRegStep2Data;
   step3: CandidateRegStep3Data;
+}
+
+/* ── Company Registration ── */
+
+export interface CompanyRegStep1Data {
+  companyName: string;
+  legalName: string;
+  website: string;
+  industry: string;
+  companySize: string;
+  foundedYear: string;
+  companyType: string;
+  gstNumber: string;
+  panNumber: string;
+  country: string;
+  state: string;
+  city: string;
+  address: string;
+  about: string;
+  agree: boolean;
+}
+
+export interface CompanyRegStep2Data {
+  fullName: string;
+  designation: string;
+  department: string;
+  email: string;
+  countryCode: string;
+  mobile: string;
+  altCountryCode: string;
+  altMobile: string;
+  password: string;
+  confirmPassword: string;
+  timeZone: string;
+  language: string;
+  emailNotifications: string;
+}
+
+export interface CompanyRegData {
+  step1: CompanyRegStep1Data;
+  step2: CompanyRegStep2Data;
 }

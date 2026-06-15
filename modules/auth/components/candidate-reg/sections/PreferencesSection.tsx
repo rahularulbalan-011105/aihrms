@@ -42,8 +42,8 @@ export default function PreferencesSection({ data, onChange }: Props) {
     onChange(next);
   };
 
-  const toggle = (field: "employmentTypes" | "benefits", value: string) => {
-    const arr = pref[field];
+  const toggle = (field: "employmentTypes" | "benefits" | "preferredLocations", value: string) => {
+    const arr = (pref[field] as string[]) ?? [];
     set(field, arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]);
   };
 
@@ -96,7 +96,21 @@ export default function PreferencesSection({ data, onChange }: Props) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 items-start">
-          <SelectField label="Preferred Work Location" required value={pref.preferredLocation} onChange={v => set("preferredLocation", v)} options={LOCATION_OPTIONS} />
+          <div>
+            <label className="block text-[13px] font-semibold text-ink-700 mb-2">
+              Preferred Work Location <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {LOCATION_OPTIONS.map(loc => (
+                <label key={loc} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={(pref.preferredLocations ?? []).includes(loc)}
+                    onChange={() => toggle("preferredLocations", loc)}
+                    className="w-4 h-4 rounded accent-brand-600" />
+                  <span className="text-[13.5px] text-ink-700">{loc}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="pt-7">
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={pref.openToRelocate} onChange={e => set("openToRelocate", e.target.checked)} className="w-4 h-4 rounded accent-brand-600" />

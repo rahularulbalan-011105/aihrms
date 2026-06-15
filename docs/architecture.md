@@ -718,9 +718,11 @@ Both services share the same JWT secret. The `candidate_api` validates tokens is
 - Switching role tabs clears all field errors and submit error
 
 #### Candidate Registration — Step 1 (with rollback)
+**Form fields:** full name, email (+ OTP), phone (+ OTP), password, job title, current location, **Professional Summary** textarea (2000-char limit). The "Where did you hear about us?" select, OR divider, and Google/Apple OAuth buttons have been removed.
+
 On "Continue" in `Step1BasicInfo`:
-1. **`registerCandidateUser(data)`** — `POST /api/users/api/v1/auth/register` → stores tokens
-2. **`updateCandidateBasicInfo(data)`** — `PUT /api/candidate/api/v1/candidate/profile/basic-info`
+1. **`registerCandidateUser(data)`** — `POST /api/users/api/v1/auth/register` → stores tokens; `source: null` (hear-about-us removed)
+2. **`updateCandidateBasicInfo(data)`** — `PUT /api/candidate/api/v1/candidate/profile/basic-info`; includes `professionalSummary`
 3. If step 2 fails → **`deleteCurrentUser()`** — `DELETE /api/users/api/v1/users/me` (rollback)
 
 Password validation matches backend `@StrongPassword`: min 8 chars + uppercase + lowercase + digit + special character.
@@ -769,6 +771,10 @@ Service files:
 | `V1__candidate_service_initial_schema.sql` | All core tables including `candidate_educations` with full columns |
 | `V2__seed_popular_skills.sql` | Skills master data |
 | `V3__education_master_data.sql` | `degree_courses` + `education_types` tables + seed data |
+| `V4__add_resume_file_key.sql` | Adds `resume_file_key VARCHAR(500)` to `candidate` |
+| `V5__add_education_attachments.sql` | Adds `attachment_file_keys TEXT` to `candidate_educations` |
+| `V6__add_professional_summary.sql` | Adds `professional_summary TEXT` to `candidate` |
+| `V7__add_profile_picture_key.sql` | Adds `profile_picture_key VARCHAR(500)` to `candidate` |
 
 ### 4.20 Backend — candidate_api Master Data Endpoints
 
@@ -788,10 +794,13 @@ All authenticated calls use `authedFetch()` (injects `Authorization: Bearer <tok
 #### Basic Info & Master Data
 | Function | Method | Endpoint |
 |---|---|---|
-| `updateCandidateBasicInfo()` | PUT | `/api/v1/candidate/profile/basic-info` |
+| `updateCandidateBasicInfo()` | PUT | `/api/v1/candidate/profile/basic-info` — body includes `professionalSummary` |
 | `fetchDegreeCourses()` | GET | `/api/v1/candidate/master/degrees` |
 | `fetchEducationTypes()` | GET | `/api/v1/candidate/master/education-types` |
 | `fetchSkills(q?)` | GET | `/api/v1/candidate/skills?q=` |
+| `fetchCandidateProfile()` | GET | `/api/candidate/profile` — maps `raw.profilePictureUrl → profilePicture`, `raw.currentRole → jobTitle` |
+| `fetchFullProfile()` | GET | `/api/candidate/profile` — returns `FullProfile` including `profilePictureUrl: string \| null` (presigned S3 URL) |
+| `uploadProfilePicture(file)` | POST | `/api/v1/candidate/profile/picture/upload` — returns `profilePictureKey` |
 
 #### Education
 | Function | Method | Endpoint |
@@ -827,7 +836,8 @@ Date conversion: form `MM/YYYY` → `YYYY-MM-01`.
 `buildSkillPayload(skill: Skill): SkillPayload` — helper that converts:
 - `proficiency` label → backend enum via `PROFICIENCY_MAP`
 - `lastUsed` "May 2024" → `"2024-05-01"`
-- months → fractional years
+- `experienceValue` + `experienceUnit` → decimal `experienceYears` (months ÷ 12)
+- The `Skill` interface no longer has a `yearsOfExperience` field; the years-of-experience slider has been removed from `AddSkillModal`
 
 #### Certifications
 | Function | Method | Endpoint |
@@ -845,12 +855,52 @@ Date conversion: form `MM/YYYY` → `YYYY-MM-01`.
 
 `buildPreferencesPayload(data)` converts `PreferencesData` → `PreferencesPayload`:
 - `jobRolePreferences` → `rolePreferences`
-- `employmentTypes` labels → `EmploymentType` enums via `PREF_EMPLOYMENT_MAP` (`"Full Time"` → `FULL_TIME`, `"Remote"` → `REMOTE`, etc.)
+- `employmentTypes` enum names passed through directly to `preferredEmploymentTypes` (stored as enum names, no re-mapping needed)
+- `preferredLocations: string[]` joined with `", "` → single `preferredLocation` string for backend
 - `additionalNotes` → `additionalPreferences`
 
-`PreferencesPayload`: `noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation`, `openToRelocate`*, `rolePreferences[]`, `preferredEmploymentTypes[]` (backend `EmploymentType` enums), `benefits[]`, `additionalPreferences`.
+`PreferencesPayload`: `noticePeriod`, `expectedSalary`, `salaryType`, `preferredLocation` (comma-joined string), `openToRelocate`*, `rolePreferences[]`, `preferredEmploymentTypes[]` (backend `EmploymentType` enums), `benefits[]`, `additionalPreferences`.
 
-### 4.22 JWT Security — Dev vs Production
+`PreferencesData.preferredLocations` is `string[]` — multi-select checkboxes from `LOCATION_OPTIONS`. `EditProfilePage` splits the stored `preferredLocation` string back to `string[]` on load.
+
+### 4.22 Backend — Profile Picture Presigned URL
+
+`CandidateProfileService` generates a presigned URL on every profile fetch:
+
+```java
+private String buildPresignedUrl(String key) {
+    if (key == null) return null;
+    try {
+        return s3StorageService.createPresignedReadUrl(key, Duration.ofHours(1)).toString();
+    } catch (Exception e) {
+        return null; // NoopS3StorageService in local dev — returns null gracefully
+    }
+}
+```
+
+`CandidateProfileResponse` includes `String profilePictureUrl` (after `profilePictureKey`). Both fields are always present; `profilePictureUrl` is null when S3 is not configured or the key is null.
+
+Frontend uses `profilePictureUrl` directly as `<img src>` — no separate download endpoint needed for profile pictures.
+
+### 4.23 View Profile & Edit Profile — Layout & UX
+
+**Layout:** both pages are **2-column** (left panel + centre). `ProfileRightPanel` is not rendered.
+
+**`(app-wide)/layout.tsx`** padding: `p-2` on `<main>` (was `px-6 py-6` on an inner div).
+
+**ProfileLeftPanel nav** (4 items only): Overview, Experience, Education, Skills & Certifications. On `/profile` these are scroll buttons backed by `IntersectionObserver`; on other paths they are route `<Link>`s.
+
+**Section highlighting:** clicking a nav item calls `onSectionClick(sectionId)` → `ProfilePage` sets `highlightedSection` (cleared after 1.5 s). The matching section's `<h2>` and header row receive `bg-brand-50` + `text-brand-600` via `transition-colors duration-500`.
+
+**ProfessionalSummary** in `ProfilePage` reads from `fullProfile.professionalSummary` — returns `null` (renders nothing) when the field is empty.
+
+**Edit Profile tab card consistency** — all tab content uses `space-y-4` root + `card` wrappers:
+- Basic Info: `card p-5` for all fields; Save outside
+- Experience tab: `EducationSection` in `card`; experience `<section>` → `card p-5`
+- Skills tab: skills block in `card p-5` (inner table uses `rounded-xl border`, not nested card); `CertificationsSection` in `card`
+- Preferences tab: `PreferencesSection` in `card`; Save button no extra horizontal padding
+
+### 4.24 JWT Security — Dev vs Production
 
 | Setting | Dev value | Production value |
 |---|---|---|
@@ -876,7 +926,9 @@ All shared primitives live in `candidate-reg/shared/` and are imported across st
 | `SelectField` | Label + native `<select>` with brand focus ring |
 
 #### `shared/icons.tsx` — SVG icons (named exports, no `"use client"`)
-All icon components: `PersonIcon`, `MailIcon`, `LockIcon`, `LocationIcon`, `GoogleIcon`, `AppleIcon`, `ArrowRightIcon`, `ArrowLeftIcon`, `ChevronDownIcon`, `ChevronIcon({ expanded })`, `EditIcon`, `TrashIcon`, `TrashSmIcon`, `PlusIcon`, `SpinnerIcon`, `CalendarIcon`, `CalendarIconSm`, `GradIcon`, `GradIconLg`, `BriefcaseIcon`, `BriefcaseIconLg`, `UploadIcon`, `UploadCloudIcon`, `SkillsIcon`, `SkillsIconLg`, `SkillIcon`, `CertIcon`, `CertIconLg`, `CertBadgeIcon`, `PrefsIcon`, `SearchIcon`, `InfoIcon`, `LinkIcon`
+All icon components: `PersonIcon`, `MailIcon`, `LockIcon`, `LocationIcon`, `GoogleIcon`, `AppleIcon`, `ArrowRightIcon`, `ArrowLeftIcon`, `ChevronDownIcon`, `ChevronIcon({ expanded })`, `EditIcon`, `TrashIcon`, `TrashSmIcon`, `PlusIcon`, `SpinnerIcon`, `CalendarIcon`, `CalendarIconSm`, `GradIcon`, `GradIconLg`, `BriefcaseIcon`, `BriefcaseIconLg`, `UploadIcon`, `UploadCloudIcon`, `SkillsIcon`, `SkillsIconLg`, `SkillIcon`, `CertIcon`, `CertIconLg`, `CertBadgeIcon`, `PrefsIcon`, `SearchIcon`, `InfoIcon`, `LinkIcon`, `GraduationCapIcon`
+
+`GraduationCapIcon` — used in `AddEducationModal` header (matches `BriefcaseIcon` style in `AddExperienceModal`).
 
 #### `shared/constants.ts` — data constants
 `MONTHS`, `MONTHS_LONG`, `PAST_YEARS`, `FUTURE_YEARS`, `LAST_USED_OPTIONS`, `PROFICIENCY_LEVELS`, `PROFICIENCY_DOTS`, `POPULAR_SKILLS`, `POPULAR_SKILL_COLORS`, `EMPLOYMENT_TYPE_MAP`, `EMPLOYMENT_TYPES`, `NOTICE_OPTIONS`, `SALARY_OPTIONS`, `SALARY_TYPE`, `LOCATION_OPTIONS`, `BENEFIT_OPTIONS`, `HEAR_OPTIONS`

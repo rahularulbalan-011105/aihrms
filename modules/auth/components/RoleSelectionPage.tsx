@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import AuthHeader from "./AuthHeader";
-import AuthStepper from "./AuthStepper";
 import RoleCard from "./role-selection/RoleCard";
 import AIPlatformStrip from "./role-selection/AIPlatformStrip";
 import TrustStrip from "./role-selection/TrustStrip";
@@ -22,8 +21,6 @@ const COMPANY_FEATURES = [
   "Team Collaboration",
 ];
 
-const STEPS = ["Choose Account Type", "Create Account", "Complete Profile"];
-
 export default function RoleSelectionPage() {
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden">
@@ -33,11 +30,8 @@ export default function RoleSelectionPage() {
         cta={{ label: "Login", href: "/login", icon: <SignInIcon /> }}
       />
 
-      {/* ── Stepper ── */}
-      <AuthStepper steps={STEPS} activeStep={0} />
-
       {/* ── Main ── */}
-      <main className="flex-1 min-h-0 overflow-y-auto py-4 px-6">
+      <main className="flex-1 min-h-0 overflow-hidden py-4 px-6">
         <div className="mx-auto max-w-[1060px]">
           {/* Title */}
           <div className="text-center mb-4">

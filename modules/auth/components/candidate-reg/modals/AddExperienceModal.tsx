@@ -10,7 +10,7 @@ import {
 } from "../../../services/candidate.service";
 import type { ExperienceFormData, ProjectForm } from "../shared/types";
 import { EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES } from "../shared/constants";
-import { ChevronDownIcon, CalendarIcon, SpinnerIcon } from "../shared/icons";
+import { ChevronDownIcon, CalendarIcon, SpinnerIcon, BriefcaseIcon } from "../shared/icons";
 import { toLabel } from "@/lib/utils";
 import { isValidMMYYYY } from "../shared/validators";
 import ProjectsSubForm from "./ProjectsSubForm";
@@ -29,7 +29,7 @@ function parseDateInput(val: string): string {
 }
 
 const EMPTY_PROJECT: ProjectForm = {
-  title: "", role: "", startDate: "", endDate: "", description: "", skills: [], skillInput: "",
+  title: "", role: "", startDate: "", endDate: "", description: "", skills: [], skillInput: "", teamSize: "",
 };
 
 const EMPTY: ExperienceFormData = {
@@ -63,6 +63,7 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
       title: p.title, role: p.role, startDate: p.startDate,
       endDate: p.endDate, description: p.description,
       skills: p.technologies, skillInput: "",
+      teamSize: p.teamSize ?? "",
     })) ?? []
   );
 
@@ -158,6 +159,7 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
           description:      p.description.trim() || undefined,
           startDate:        toLocalDate(p.startDate),
           endDate:          toLocalDate(p.endDate),
+          teamSize:         p.teamSize ? Number(p.teamSize) : undefined,
           technologiesUsed: p.skills.join(", ") || undefined,
         })),
       };
@@ -189,7 +191,7 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
           startDate:    p.startDate,
           endDate:      p.endDate,
           description:  p.description.trim(),
-          teamSize:     "",
+          teamSize:     p.teamSize,
           technologies: p.skills,
         })),
       };
@@ -205,12 +207,17 @@ export default function AddExperienceModal({ onClose, onSaved, initialExperience
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[780px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-3 border-b border-ink-100">
-          <div>
-            <h2 className="font-display font-extrabold text-[20px] text-ink-900">{isEdit ? "Edit Experience" : "Add Experience"}</h2>
-            <p className="text-[13px] text-ink-500 mt-0.5">Add your work experience and the projects you&apos;ve worked on.</p>
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-ink-100">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center">
+              <BriefcaseIcon />
+            </div>
+            <div>
+              <h2 className="font-display font-extrabold text-[20px] text-ink-900">{isEdit ? "Edit Experience" : "Add Experience"}</h2>
+              <p className="text-[12.5px] text-ink-500 mt-0.5">Add your work experience and the projects you&apos;ve worked on.</p>
+            </div>
           </div>
-          <button type="button" onClick={onClose}
+          <button type="button" onClick={onClose} aria-label="Close"
             className="w-8 h-8 rounded-full bg-ink-100 hover:bg-ink-200 flex items-center justify-center text-ink-600 transition shrink-0 mt-0.5">
             ✕
           </button>

@@ -153,7 +153,7 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-3 space-y-3">
 
           {/* Row 1 — Name + Institution */}
           <div className="grid grid-cols-2 gap-4">
@@ -274,8 +274,8 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
             <textarea value={form.description}
               onChange={e => set("description", e.target.value.slice(0, 500))}
               placeholder="Add a brief description about this certification"
-              rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-ink-200 text-[13.5px] bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 resize-none transition" />
+              rows={2}
+              className="w-full px-4 py-2.5 rounded-xl border border-ink-200 text-[13.5px] bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 resize-none transition" />
             <div className="text-right text-[11px] text-ink-400 mt-0.5">{form.description.length}/500</div>
           </div>
 
@@ -311,7 +311,7 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
                   aria-label="Select certificate file"
                   onClick={() => fileInputRef.current?.click()}
                   onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-                  className={`rounded-xl border-2 border-dashed px-6 py-6 flex items-center gap-4 cursor-pointer transition group
+                  className={`rounded-xl border-2 border-dashed px-6 py-3 flex items-center gap-4 cursor-pointer transition group
                     ${hasFile
                       ? "border-green-300 bg-green-50/30 hover:border-green-400"
                       : "border-brand-200 bg-brand-50/20 hover:bg-brand-50/40 hover:border-brand-400"}`}>
@@ -354,7 +354,7 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
               {apiError}
             </div>
           )}
-          <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center justify-between px-6 py-3">
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={form.displayOnProfile}
                 onChange={e => set("displayOnProfile", e.target.checked)}

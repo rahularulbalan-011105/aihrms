@@ -12,7 +12,7 @@ import {
 } from "../../../services/candidate.service";
 import type { Education } from "../../../types/auth.types";
 import type { EducationFormData } from "../shared/types";
-import { ChevronDownIcon, CalendarIcon, UploadCloudIcon, SpinnerIcon, TrashSmIcon } from "../shared/icons";
+import { ChevronDownIcon, CalendarIcon, UploadCloudIcon, SpinnerIcon, TrashSmIcon, GraduationCapIcon } from "../shared/icons";
 
 interface Props {
   onClose: () => void;
@@ -122,12 +122,17 @@ export default function AddEducationModal({ onClose, onSaved, editId, initialDat
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[640px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-3 border-b border-ink-100">
-          <div>
-            <h2 className="font-display font-extrabold text-[20px] text-ink-900">{isEdit ? "Edit Education" : "Add Education"}</h2>
-            <p className="text-[13px] text-ink-500 mt-0.5">Add your educational qualification details</p>
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-ink-100">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center">
+              <GraduationCapIcon />
+            </div>
+            <div>
+              <h2 className="font-display font-extrabold text-[20px] text-ink-900">{isEdit ? "Edit Education" : "Add Education"}</h2>
+              <p className="text-[12.5px] text-ink-500 mt-0.5">Add your educational qualification details.</p>
+            </div>
           </div>
-          <button type="button" onClick={onClose}
+          <button type="button" onClick={onClose} aria-label="Close"
             className="w-8 h-8 rounded-full bg-ink-100 hover:bg-ink-200 flex items-center justify-center text-ink-600 transition shrink-0 mt-0.5">
             ✕
           </button>

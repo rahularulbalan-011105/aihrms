@@ -142,7 +142,7 @@ export default function AppHeader() {
     if (!contextProfile) {
       const name = getStoredUserName();
       const title = getStoredJobTitle();
-      if (name) setLocalProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: title, profilePicture: null });
+      if (name) setLocalProfile({ fullName: name, currentLocation: null, phoneNumber: null, jobTitle: title, profilePicture: null }); // picture not available in localStorage fallback
     }
   }, [contextProfile]);
 

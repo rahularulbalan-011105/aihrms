@@ -84,8 +84,8 @@ export default function ProjectsSubForm({ projects, errors, onAdd, onRemove, onC
               </button>
             </div>
 
-            {/* Row 1 — Title + Role + Duration */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Row 1 — Title + Role + Team Size + Duration */}
+            <div className="grid grid-cols-4 gap-3">
               <div>
                 <label className="block text-[12px] font-semibold text-ink-700 mb-1">
                   Project Title <span className="text-red-500">*</span>
@@ -106,6 +106,18 @@ export default function ProjectsSubForm({ projects, errors, onAdd, onRemove, onC
                   className={`w-full px-3 py-2 rounded-lg border text-[13px] bg-white outline-none transition
                     ${errors[`project_${idx}_role`] ? "border-red-400" : "border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"}`} />
                 {errors[`project_${idx}_role`] && <p className="mt-1 text-[11px] text-red-600">{errors[`project_${idx}_role`]}</p>}
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold text-ink-700 mb-1">
+                  Team Size <span className="text-ink-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="number" min="1" max="9999"
+                  value={proj.teamSize}
+                  onChange={e => onChange(idx, { teamSize: e.target.value.replace(/\D/g, "") })}
+                  placeholder="e.g., 5"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-200 text-[13px] bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition" />
               </div>
 
               <div>

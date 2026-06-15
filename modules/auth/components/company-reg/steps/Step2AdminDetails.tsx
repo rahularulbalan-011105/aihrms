@@ -1,26 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import type { AdminData } from "../shared/types";
+import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
+import { registerCompanyUser, saveCompanyProfile } from "@/modules/auth/services/company.service";
+import { isValidEmail, isStrongPassword } from "@/modules/auth/components/candidate-reg/shared/validators";
 
 interface Props {
   data: AdminData;
+  company: CompanyData;
   onChange: (d: AdminData) => void;
   onBack: () => void;
   onContinue: () => void;
 }
+
+type FieldErrors = Partial<Record<keyof AdminData | "api", string>>;
 
 const COUNTRY_CODES = ["+91", "+1", "+44", "+65", "+971"];
 const TIMEZONES = ["(GMT +05:30) Asia/Kolkata", "(GMT +00:00) UTC", "(GMT -05:00) New York", "(GMT +01:00) London"];
 const LANGUAGES = ["English", "Hindi", "Spanish", "French"];
 const NOTIFY_OPTS = ["Receive important updates", "Receive all updates", "Critical only", "None"];
 
-export default function Step2AdminDetails({ data, onChange, onBack, onContinue }: Props) {
-  const set = <K extends keyof AdminData>(k: K, v: AdminData[K]) => onChange({ ...data, [k]: v });
+export default function Step2AdminDetails({ data, company, onChange, onBack, onContinue }: Props) {
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const set = <K extends keyof AdminData>(k: K, v: AdminData[K]) => {
+    onChange({ ...data, [k]: v });
+    if (errors[k]) setErrors((prev) => ({ ...prev, [k]: undefined, api: undefined }));
+  };
 
   const pwd = data.password ?? "";
   const checks = {
@@ -29,6 +40,39 @@ export default function Step2AdminDetails({ data, onChange, onBack, onContinue }
     number: /\d/.test(pwd),
     special:/[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]~`]/.test(pwd),
   };
+
+  function validate(): boolean {
+    const errs: FieldErrors = {};
+    if (!data.fullName?.trim())   errs.fullName    = "Required";
+    if (!data.designation?.trim()) errs.designation = "Required";
+    if (!data.email?.trim())      errs.email       = "Required";
+    else if (!isValidEmail(data.email)) errs.email = "Enter a valid email address";
+    if (!data.mobile?.trim())     errs.mobile      = "Required";
+    const pwdErr = isStrongPassword(data.password ?? "");
+    if (pwdErr)                   errs.password    = pwdErr;
+    if (!data.confirmPassword?.trim()) errs.confirmPassword = "Required";
+    else if (data.password !== data.confirmPassword) errs.confirmPassword = "Passwords do not match";
+    if (!data.timeZone)           errs.timeZone    = "Required";
+    if (!data.language)           errs.language    = "Required";
+    if (!data.emailNotifications) errs.emailNotifications = "Required";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  async function handleContinue() {
+    if (!validate()) return;
+    setIsLoading(true);
+    setErrors((prev) => ({ ...prev, api: undefined }));
+    try {
+      await registerCompanyUser(data);
+      await saveCompanyProfile(company);
+      onContinue();
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, api: err instanceof Error ? err.message : "Registration failed. Please try again." }));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="flex-1 grid lg:grid-cols-[360px_1fr]">
@@ -80,23 +124,35 @@ export default function Step2AdminDetails({ data, onChange, onBack, onContinue }
               <HorizontalStepper current={2} />
             </div>
 
+            {/* API error banner */}
+            {errors.api && (
+              <div className="mt-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-[13px] text-red-700" role="alert">
+                {errors.api}
+              </div>
+            )}
+
             {/* Personal Information */}
             <Section title="Personal Information" icon={<UserIcon size={14} />}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Full Name" required icon={<UserIcon size={14} />}
-                  value={data.fullName} onChange={(v) => set("fullName", v)} placeholder="Enter full name" />
+                  value={data.fullName} onChange={(v) => set("fullName", v)}
+                  placeholder="Enter full name" error={errors.fullName} />
                 <Field label="Designation" required icon={<MailIcon />}
-                  value={data.designation} onChange={(v) => set("designation", v)} placeholder="Enter designation" />
+                  value={data.designation} onChange={(v) => set("designation", v)}
+                  placeholder="Enter designation" error={errors.designation} />
                 <Field label="Department" icon={<DocIcon />}
-                  value={data.department} onChange={(v) => set("department", v)} placeholder="Enter department (e.g., HR, Operations)" />
+                  value={data.department} onChange={(v) => set("department", v)}
+                  placeholder="Enter department (e.g., HR, Operations)" />
 
                 <Field label="Email Address" required icon={<MailIcon />}
-                  value={data.email} onChange={(v) => set("email", v)} placeholder="Enter admin email address" />
+                  value={data.email} onChange={(v) => set("email", v)}
+                  placeholder="Enter admin email address" error={errors.email} />
 
                 <div>
                   <Label required>Mobile Number</Label>
                   <PhoneField cc={data.countryCode ?? "+91"} onCc={(v) => set("countryCode", v)}
                     value={data.mobile} onValue={(v) => set("mobile", v)} placeholder="Enter mobile number" />
+                  {errors.mobile && <p className="mt-1 text-[11px] text-red-500" role="alert">{errors.mobile}</p>}
                 </div>
 
                 <div>
@@ -110,10 +166,14 @@ export default function Step2AdminDetails({ data, onChange, onBack, onContinue }
             {/* Login Credentials */}
             <Section title="Login Credentials" icon={<LockIcon />}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <PasswordField label="Password" required value={pwd} onChange={(v) => set("password", v)}
-                  show={showPwd} onToggle={() => setShowPwd((s) => !s)} placeholder="Create a strong password" />
-                <PasswordField label="Confirm Password" required value={data.confirmPassword ?? ""} onChange={(v) => set("confirmPassword", v)}
-                  show={showConfirm} onToggle={() => setShowConfirm((s) => !s)} placeholder="Confirm your password" />
+                <PasswordField label="Password" required value={pwd}
+                  onChange={(v) => set("password", v)}
+                  show={showPwd} onToggle={() => setShowPwd((s) => !s)}
+                  placeholder="Create a strong password" error={errors.password} />
+                <PasswordField label="Confirm Password" required value={data.confirmPassword ?? ""}
+                  onChange={(v) => set("confirmPassword", v)}
+                  show={showConfirm} onToggle={() => setShowConfirm((s) => !s)}
+                  placeholder="Confirm your password" error={errors.confirmPassword} />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <PwdChip ok={checks.length}  label="Min 8 characters" />
@@ -126,12 +186,15 @@ export default function Step2AdminDetails({ data, onChange, onBack, onContinue }
             {/* Preferences */}
             <Section title="Preferences" icon={<GearIcon />}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Select label="Default Time Zone" required value={data.timeZone} onChange={(v) => set("timeZone", v)}
-                  options={TIMEZONES} placeholder="(GMT +05:30) Asia/Kolkata" />
-                <Select label="Preferred Language" required value={data.language} onChange={(v) => set("language", v)}
-                  options={LANGUAGES} placeholder="English" />
-                <Select label="Email Notifications" required value={data.emailNotifications} onChange={(v) => set("emailNotifications", v)}
-                  options={NOTIFY_OPTS} placeholder="Receive important updates" />
+                <Select label="Default Time Zone" required value={data.timeZone}
+                  onChange={(v) => set("timeZone", v)} options={TIMEZONES}
+                  placeholder="(GMT +05:30) Asia/Kolkata" error={errors.timeZone} />
+                <Select label="Preferred Language" required value={data.language}
+                  onChange={(v) => set("language", v)} options={LANGUAGES}
+                  placeholder="English" error={errors.language} />
+                <Select label="Email Notifications" required value={data.emailNotifications}
+                  onChange={(v) => set("emailNotifications", v)} options={NOTIFY_OPTS}
+                  placeholder="Receive important updates" error={errors.emailNotifications} />
               </div>
             </Section>
 
@@ -145,17 +208,21 @@ export default function Step2AdminDetails({ data, onChange, onBack, onContinue }
 
             {/* Bottom buttons */}
             <div className="mt-7 flex items-center justify-between border-t border-ink-100 pt-5">
-              <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-brand-300 text-brand-700 text-[13.5px] font-semibold hover:bg-brand-50 transition inline-flex items-center gap-2">
+              <button onClick={onBack} disabled={isLoading}
+                className="px-5 py-2.5 rounded-lg border border-brand-300 text-brand-700 text-[13.5px] font-semibold hover:bg-brand-50 transition inline-flex items-center gap-2 disabled:opacity-50">
                 <ArrowLeft /> Back
               </button>
               <div className="flex items-center gap-3">
-                <button className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">
-                  Save & Exit
+                <button disabled={isLoading}
+                  className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition disabled:opacity-50">
+                  Save &amp; Exit
                 </button>
-                <button onClick={onContinue}
-                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2"
+                <button onClick={handleContinue} disabled={isLoading}
+                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-75"
                   style={{ background: "var(--gradient-brand)" }}>
-                  Continue <ArrowRight />
+                  {isLoading ? <SpinnerIcon /> : null}
+                  {isLoading ? "Creating account…" : "Continue"}
+                  {!isLoading && <ArrowRight />}
                 </button>
               </div>
             </div>
@@ -184,9 +251,9 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
     </label>
   );
 }
-function Field({ label, required, icon, value, onChange, placeholder }: {
+function Field({ label, required, icon, value, onChange, placeholder, error }: {
   label: string; required?: boolean; icon?: React.ReactNode;
-  value: string; onChange: (v: string) => void; placeholder?: string;
+  value: string; onChange: (v: string) => void; placeholder?: string; error?: string;
 }) {
   return (
     <div>
@@ -197,14 +264,16 @@ function Field({ label, required, icon, value, onChange, placeholder }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
+          className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
         />
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-500" role="alert">{error}</p>}
     </div>
   );
 }
-function Select({ label, required, value, onChange, placeholder, options }: {
-  label: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; options: string[];
+function Select({ label, required, value, onChange, placeholder, options, error }: {
+  label: string; required?: boolean; value: string; onChange: (v: string) => void;
+  placeholder?: string; options: string[]; error?: string;
 }) {
   return (
     <div>
@@ -213,13 +282,14 @@ function Select({ label, required, value, onChange, placeholder, options }: {
         <select
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full pl-3 pr-9 py-2.5 rounded-lg border border-ink-200 text-[13.5px] bg-white focus:outline-none focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}
+          className={`w-full pl-3 pr-9 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] bg-white focus:outline-none focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}
         >
           <option value="" disabled>{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-500" role="alert">{error}</p>}
     </div>
   );
 }
@@ -243,9 +313,9 @@ function PhoneField({ cc, onCc, value, onValue, placeholder }: {
     </div>
   );
 }
-function PasswordField({ label, required, value, onChange, show, onToggle, placeholder }: {
+function PasswordField({ label, required, value, onChange, show, onToggle, placeholder, error }: {
   label: string; required?: boolean; value: string; onChange: (v: string) => void;
-  show: boolean; onToggle: () => void; placeholder: string;
+  show: boolean; onToggle: () => void; placeholder: string; error?: string;
 }) {
   return (
     <div>
@@ -253,11 +323,12 @@ function PasswordField({ label, required, value, onChange, show, onToggle, place
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"><LockIcon /></span>
         <input type={show ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-          className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400" />
+          className={`w-full pl-9 pr-10 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`} />
         <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label="Toggle password visibility">
           {show ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       </div>
+      {error && <p className="mt-1 text-[11px] text-red-500" role="alert">{error}</p>}
     </div>
   );
 }
@@ -296,6 +367,14 @@ function NeedHelpCard() {
 }
 
 /* Icons */
+function SpinnerIcon() {
+  return (
+    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
 function UserIcon({ size = 18 }: { size?: number }) { return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" /><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
 function MailIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function DocIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 2h8l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="1.6" /></svg>); }

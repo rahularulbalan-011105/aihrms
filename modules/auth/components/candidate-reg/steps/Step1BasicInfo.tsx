@@ -12,9 +12,8 @@ import {
 import { updateCandidateBasicInfo } from "../../../services/candidate.service";
 import {
   PersonIcon, MailIcon, LockIcon, LocationIcon, CalendarIcon,
-  GoogleIcon, AppleIcon, ArrowRightIcon, SpinnerIcon, VerifiedIcon,
+  ArrowRightIcon, SpinnerIcon, VerifiedIcon,
 } from "../shared/icons";
-import { HEAR_OPTIONS } from "../shared/constants";
 import { isValidEmail, isStrongPassword } from "../shared/validators";
 
 interface Props {
@@ -313,16 +312,21 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
         </Field>
       </div>
 
-      {/* Hear about us */}
+      {/* Professional Summary */}
       <div className="mt-3">
-        <label htmlFor="hearAboutUs" className="block text-[13px] font-semibold text-ink-700 mb-1.5">
-          Where did you hear about us? <span className="text-ink-400 font-normal">(Optional)</span>
+        <label htmlFor="professionalSummary" className="block text-[13px] font-semibold text-ink-700 mb-1.5">
+          Professional Summary <span className="text-ink-400 font-normal">(Optional)</span>
         </label>
-        <select id="hearAboutUs" value={data.hearAboutUs} onChange={(e) => set("hearAboutUs", e.target.value)}
-          className="w-full px-4 py-2 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition appearance-none">
-          <option value="">Select an option</option>
-          {HEAR_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+        <textarea
+          id="professionalSummary"
+          value={data.professionalSummary}
+          onChange={(e) => set("professionalSummary", e.target.value)}
+          placeholder="Briefly describe your professional background, key skills, and career goals..."
+          rows={4}
+          maxLength={2000}
+          className="w-full px-4 py-3 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition resize-none"
+        />
+        <p className="mt-1 text-[11.5px] text-ink-400 text-right">{data.professionalSummary.length}/2000</p>
       </div>
 
       {/* Terms + Continue */}
@@ -350,23 +354,6 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
             <span>⚠</span>{localErrors.acceptTerms}
           </p>
         )}
-      </div>
-
-      <div className="my-5 flex items-center gap-3">
-        <div className="flex-1 h-px bg-ink-200" />
-        <span className="text-[12.5px] text-ink-400 font-medium">OR</span>
-        <div className="flex-1 h-px bg-ink-200" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <button type="button"
-          className="flex items-center justify-center gap-2.5 py-2 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
-          <GoogleIcon /> Continue with Google
-        </button>
-        <button type="button"
-          className="flex items-center justify-center gap-2.5 py-2 rounded-xl border border-ink-200 text-[13.5px] font-semibold text-ink-700 hover:bg-ink-50 transition">
-          <AppleIcon /> Continue with Apple
-        </button>
       </div>
 
       <p className="mt-3 text-center text-[12.5px] text-ink-500 flex items-center justify-center gap-1.5">

@@ -1,15 +1,23 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getStoredCompanyName } from "@/lib/api/config";
 
 export default function CompanyDashboard() {
+  const [companyName, setCompanyName] = useState("");
+
+  useEffect(() => {
+    setCompanyName(getStoredCompanyName() ?? "");
+  }, []);
+
   return (
     <div className="px-8 py-7 max-w-[1400px] mx-auto">
       {/* Greeting */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-display text-[24px] font-extrabold tracking-tight inline-flex items-center gap-2">
-            Welcome back, Acme Talent Solutions! <span aria-hidden="true">👋</span>
+            Welcome back{companyName ? `, ${companyName}` : ""}! <span aria-hidden="true">👋</span>
           </h1>
           <p className="text-ink-500 text-[13.5px] mt-1">Here&apos;s what&apos;s happening with your hiring today.</p>
         </div>

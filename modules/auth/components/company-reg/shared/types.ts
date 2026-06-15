@@ -14,6 +14,7 @@ export interface CompanyData {
   address: string;
   about: string;
   agree: boolean;
+  logoFile?: File | null;
 }
 
 export interface AdminData {
