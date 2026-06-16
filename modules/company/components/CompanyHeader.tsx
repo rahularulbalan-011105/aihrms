@@ -1,9 +1,46 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
+import { getStoredCompanyName, getStoredCompanyLogoUrl, clearAuth } from "@/lib/api/config";
+
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
 
 export default function CompanyHeader() {
+  const router = useRouter();
+  const [companyName, setCompanyName] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCompanyName(getStoredCompanyName() ?? "");
+    setLogoUrl(getStoredCompanyLogoUrl());
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  function handleLogout() {
+    clearAuth();
+    router.push("/login");
+  }
+
+  const displayName = companyName || "My Company";
+  const avatarInitials = companyName ? initials(companyName) : "MC";
+
   return (
     <header className="h-[72px] shrink-0 border-b border-ink-100 bg-white flex items-center px-6 gap-6">
       <Link href="/company/dashboard" className="shrink-0">
@@ -25,14 +62,41 @@ export default function CompanyHeader() {
         <IconBtn aria-label="Notifications" badge="3"><BellIcon /></IconBtn>
         <IconBtn aria-label="Messages"      badge="6"><EnvelopeIcon /></IconBtn>
         <div className="w-px h-7 bg-ink-200 mx-1" />
-        <button className="flex items-center gap-3 pr-3 hover:bg-ink-100 rounded-lg transition">
-          <span className="w-10 h-10 rounded-full bg-brand-600 text-white text-[12px] font-bold flex items-center justify-center">AC</span>
-          <span className="text-left leading-tight">
-            <span className="block text-[13px] font-bold text-ink-900">Acme Talent Solutions</span>
-            <span className="block text-[11px] text-ink-500">Agency</span>
-          </span>
-          <span className="text-ink-400"><ChevronDown /></span>
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-3 pr-3 hover:bg-ink-100 rounded-lg transition"
+          >
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={displayName}
+                className="w-10 h-10 rounded-full object-contain border border-ink-100 bg-white p-0.5 shrink-0"
+              />
+            ) : (
+              <span className="w-10 h-10 rounded-full bg-brand-600 text-white text-[12px] font-bold flex items-center justify-center shrink-0">
+                {avatarInitials}
+              </span>
+            )}
+            <span className="text-left leading-tight">
+              <span className="block text-[13px] font-bold text-ink-900 max-w-[160px] truncate">{displayName}</span>
+              <span className="block text-[11px] text-ink-500">Recruitment Company</span>
+            </span>
+            <span className="text-ink-400"><ChevronDown /></span>
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-ink-100 shadow-lg py-1.5 z-50">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2.5 text-[13px] text-red-600 font-semibold hover:bg-red-50 transition flex items-center gap-2"
+              >
+                <LogoutIcon /> Logout
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -55,3 +119,4 @@ function SearchIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" 
 function BellIcon() { return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>); }
 function EnvelopeIcon() { return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6"/></svg>); }
 function ChevronDown() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>); }
+function LogoutIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>); }

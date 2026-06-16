@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loginUser } from "../services/auth.service";
+import { fetchCompanyProfile } from "../services/company.service";
 import type { UserRole } from "../types/auth.types";
 import AuthHeader from "./AuthHeader";
 import { assetPath } from "@/lib/assetPath";
@@ -36,7 +37,12 @@ export default function LoginPage() {
       setLoading(true);
       setSubmitError("");
       await loginUser({ role, email, password, rememberMe });
-      router.push("/dashboard");
+      if (role === "recruiter") {
+        await fetchCompanyProfile().catch(() => {});
+        router.push("/company/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch {
       setSubmitError("Invalid email or password. Please try again.");
     } finally {

@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
-import { saveCompanyProfile, uploadCompanyLogo } from "@/modules/auth/services/company.service";
-import type { CompanyRegStep1Data } from "@/modules/auth/types/auth.types";
+import { uploadCompanyLogo } from "@/modules/auth/services/company.service";
 
 interface Props {
   company: CompanyData;
@@ -21,30 +20,8 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
 
   async function handleComplete() {
     setIsCompleting(true);
-    try {
-      const step1: CompanyRegStep1Data = {
-        companyName: company.companyName,
-        legalName:   company.legalName,
-        website:     company.website,
-        industry:    company.industry,
-        companySize: company.companySize,
-        foundedYear: company.foundedYear,
-        companyType: company.companyType,
-        gstNumber:   company.gstNumber,
-        panNumber:   company.panNumber,
-        country:     company.country,
-        state:       company.state,
-        city:        company.city,
-        address:     company.address,
-        about:       company.about,
-        agree:       company.agree,
-      };
-      await saveCompanyProfile(step1);
-      if (company.logoFile) {
-        await uploadCompanyLogo(company.logoFile);
-      }
-    } catch {
-      // non-fatal — profile data can be completed later in the dashboard
+    if (company.logoFile) {
+      await uploadCompanyLogo(company.logoFile).catch(() => {});
     }
     router.push("/company/dashboard");
   }

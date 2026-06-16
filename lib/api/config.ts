@@ -45,10 +45,19 @@ export const setUserId = (id: string): void => {
   if (isBrowser) localStorage.setItem("hiremind_user_id", id);
 };
 
+/** Company logo presigned URL cached after login/profile-fetch */
+export const getStoredCompanyLogoUrl = (): string | null =>
+  isBrowser ? localStorage.getItem("hiremind_company_logo_url") : null;
+
+export const setStoredCompanyLogoUrl = (url: string): void => {
+  if (isBrowser) localStorage.setItem("hiremind_company_logo_url", url);
+};
+
 export const clearAuth = () => {
   if (!isBrowser) return;
   ["hiremind_access_token", "hiremind_refresh_token", "hiremind_user_id",
-   "hiremind_user_name", "hiremind_job_title", "hiremind_company_name"].forEach((k) =>
+   "hiremind_user_name", "hiremind_job_title", "hiremind_company_name",
+   "hiremind_company_logo_url"].forEach((k) =>
     localStorage.removeItem(k)
   );
 };

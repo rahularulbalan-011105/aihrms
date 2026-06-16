@@ -5,6 +5,7 @@ import {
   setRefreshToken,
   setUserId,
   setStoredCompanyName,
+  setStoredCompanyLogoUrl,
   clearAuth,
 } from "@/lib/api/config";
 import type { CompanyRegStep1Data, CompanyRegStep2Data } from "../types/auth.types";
@@ -42,6 +43,22 @@ export async function registerCompanyUser(data: CompanyRegStep2Data): Promise<st
   setUserId(userId);
   setStoredCompanyName(data.fullName.trim());
   return userId as string;
+}
+
+/** GET /company/profile — fetch profile after login; caches company name in localStorage */
+export async function fetchCompanyProfile(): Promise<void> {
+  const token = getAccessToken();
+  if (!token) return;
+
+  const res = await fetch(`${API.COMPANY}/company/profile`, {
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+
+  if (!res.ok) return;
+  const json = await res.json().catch(() => null);
+  const data = json?.data;
+  if (data?.companyName) setStoredCompanyName(data.companyName);
+  if (data?.logoUrl)     setStoredCompanyLogoUrl(data.logoUrl);
 }
 
 /** PUT /company/profile — save Step 1 company details; non-fatal if company_api is down */
