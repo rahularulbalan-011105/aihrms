@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getStoredCompanyName } from "@/lib/api/config";
+import { fetchJobCounts } from "@/modules/company/jobs/services/job.service";
 
 export default function CompanyDashboard() {
   const [companyName, setCompanyName] = useState("");
+  const [jobCounts, setJobCounts] = useState({ total: 0, published: 0, drafts: 0 });
 
   useEffect(() => {
     setCompanyName(getStoredCompanyName() ?? "");
+  }, []);
+
+  useEffect(() => {
+    fetchJobCounts()
+      .then(setJobCounts)
+      .catch(() => {}); // non-fatal — leave counts at 0 if company_api is unavailable
   }, []);
 
   return (
@@ -32,7 +40,7 @@ export default function CompanyDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-5">
-        <StatCard tint="brand"  icon={<BriefIcon />}  value="12" label="Active Jobs"        delta="↑ 2 from last week" />
+        <StatCard tint="brand"  icon={<BriefIcon />}  value={String(jobCounts.published)} label="Active Jobs" delta={jobCounts.drafts > 0 ? `${jobCounts.drafts} draft${jobCounts.drafts === 1 ? "" : "s"}` : ""} />
         <StatCard tint="green"  icon={<UserPlusIcon />} value="86" label="Total Candidates" delta="↑ 14 from last week" />
         <StatCard tint="blue"   icon={<DocIcon />}    value="28" label="Applications"      delta="↑ 5 from last week" />
         <StatCard tint="orange" icon={<CalendarIcon />} value="8" label="Interviews"       delta="↑ 3 from last week" />

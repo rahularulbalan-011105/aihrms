@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
 import { clearAuth, getStoredUserName, getStoredJobTitle } from "@/lib/api/config";
 import { useProfile } from "@/modules/dashboard/context/ProfileContext";
@@ -133,7 +133,16 @@ function UserMenu({ profile, onLogout }: UserMenuProps) {
 
 export default function AppHeader() {
   const router = useRouter();
+  const pathname = usePathname();
   const { profile: contextProfile } = useProfile();
+
+  function handleLogoClick() {
+    if (pathname === "/dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      router.push("/dashboard");
+    }
+  }
 
   // Fallback: when AppHeader is used without ProfileProvider (e.g. (app-wide) layout),
   // read stored values from localStorage so the header still shows the user's name.
@@ -164,9 +173,9 @@ export default function AppHeader() {
 
       {/* ── Logo zone — mirrors sidebar width ── */}
       <div className="w-[260px] shrink-0 flex items-center px-6 h-[72px] bg-white border-r border-ink-200">
-        <Link href="/">
+        <button type="button" onClick={handleLogoClick} className="cursor-pointer">
           <BrandLogo size="md" />
-        </Link>
+        </button>
       </div>
 
       {/* ── Greeting + actions ── */}

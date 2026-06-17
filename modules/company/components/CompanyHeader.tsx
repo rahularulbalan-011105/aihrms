@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
 import { getStoredCompanyName, getStoredCompanyLogoUrl, clearAuth } from "@/lib/api/config";
 
@@ -12,6 +11,7 @@ function initials(name: string): string {
 
 export default function CompanyHeader() {
   const router = useRouter();
+  const pathname = usePathname();
   const [companyName, setCompanyName] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +33,14 @@ export default function CompanyHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
+  function handleLogoClick() {
+    if (pathname === "/company/dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      router.push("/company/dashboard");
+    }
+  }
+
   function handleLogout() {
     clearAuth();
     router.push("/login");
@@ -43,9 +51,9 @@ export default function CompanyHeader() {
 
   return (
     <header className="h-[72px] shrink-0 border-b border-ink-100 bg-white flex items-center px-6 gap-6">
-      <Link href="/company/dashboard" className="shrink-0">
+      <button type="button" onClick={handleLogoClick} className="shrink-0 cursor-pointer">
         <BrandLogo size="md" />
-      </Link>
+      </button>
 
       <div className="flex-1 max-w-[640px] mx-auto">
         <div className="relative">

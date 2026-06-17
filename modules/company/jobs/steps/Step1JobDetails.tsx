@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import JobStepper from "../shared/JobStepper";
 import RightRail from "../shared/RightRail";
 import type { JobDraft, JobDetailsData } from "../shared/types";
@@ -11,10 +12,30 @@ interface Props {
   onContinue: () => void;
 }
 
+type FieldErrors = Partial<Record<keyof JobDetailsData, string>>;
+
 export default function Step1JobDetails({ data, onChange, onCancel, onContinue }: Props) {
   const d = data.details;
-  const set = <K extends keyof JobDetailsData>(k: K, v: JobDetailsData[K]) =>
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const set = <K extends keyof JobDetailsData>(k: K, v: JobDetailsData[K]) => {
     onChange({ ...data, details: { ...d, [k]: v } });
+    if (errors[k]) setErrors((prev) => ({ ...prev, [k]: undefined }));
+  };
+
+  function validate(): boolean {
+    const next: FieldErrors = {};
+    if (!d.title.trim())             next.title = "Job title is required";
+    if (!d.roleCategory)             next.roleCategory = "Role / category is required";
+    if (!d.workplaceLocation.trim()) next.workplaceLocation = "Workplace location is required";
+    if (!d.description.trim())       next.description = "Job description is required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  const handleContinue = () => {
+    if (validate()) onContinue();
+  };
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -29,7 +50,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save Draft</button>
-          <button onClick={onContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+          <button onClick={handleContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
             Next: Requirements <ArrowRight />
           </button>
         </div>
@@ -44,8 +65,8 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
           <Card>
             <Header icon={<BriefIcon />} title="Job Details" subtitle="Provide the basic information about the job role." />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="Job Title" required value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. Senior Software Engineer" />
-              <Select label="Job Role / Category" required value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} />
+              <Field label="Job Title" required value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. Senior Software Engineer" error={errors.title} />
+              <Select label="Job Role / Category" required value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} error={errors.roleCategory} />
               <Select label="Department" value={d.department} onChange={(v) => set("department", v)} placeholder="Select department" options={["Engineering", "Product", "Design", "Sales", "Marketing", "HR"]} />
             </div>
 
@@ -70,7 +91,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <Select label="Work Location" required value={d.workLocationType} onChange={(v) => set("workLocationType", v)} placeholder="Select location type" options={["Single Location", "Multiple Locations", "Anywhere"]} />
-              <Field label="Workplace / Office Location" required value={d.workplaceLocation} onChange={(v) => set("workplaceLocation", v)} placeholder="Enter city, state or country" />
+              <Field label="Workplace / Office Location" required value={d.workplaceLocation} onChange={(v) => set("workplaceLocation", v)} placeholder="Enter city, state or country" error={errors.workplaceLocation} />
               <DateField label="Proposed Starting Date" required value={d.startingDate} onChange={(v) => set("startingDate", v)} />
             </div>
 
@@ -96,7 +117,10 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
                 className="w-full min-h-[110px] mt-0 p-3 rounded-b-lg border border-ink-200 border-t-0 text-[13.5px] focus:outline-none focus:border-brand-300 placeholder:text-ink-400 resize-y"
                 maxLength={3000}
               />
-              <div className="text-right text-[11px] text-ink-400 mt-0.5">{d.description.length}/3000</div>
+              <div className="flex items-center justify-between mt-0.5">
+                {errors.description ? <span role="alert" className="text-[11px] text-red-500">{errors.description}</span> : <span />}
+                <span className="text-[11px] text-ink-400">{d.description.length}/3000</span>
+              </div>
             </div>
           </Card>
 
@@ -145,7 +169,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
             <button onClick={onCancel} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Cancel</button>
             <div className="flex items-center gap-3">
               <button className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save as Draft</button>
-              <button onClick={onContinue} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+              <button onClick={handleContinue} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
                 Next: Requirements <ArrowRight />
               </button>
             </div>
@@ -183,27 +207,33 @@ function Header({ icon, title, subtitle }: { icon: React.ReactNode; title: strin
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return <label className="block text-[12px] font-semibold text-ink-700 mb-1.5">{children} {required && <span className="text-red-500">*</span>}</label>;
 }
-function Field({ label, required, value, onChange, placeholder }: { label?: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function ErrorText({ error }: { error?: string }) {
+  if (!error) return null;
+  return <span role="alert" className="block text-[11px] text-red-500 mt-1">{error}</span>;
+}
+function Field({ label, required, value, onChange, placeholder, error }: { label?: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; error?: string }) {
   return (
     <div>
       {label && <Label required={required}>{label}</Label>}
       <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400" />
+        className={`w-full px-3 py-2.5 rounded-lg border text-[13.5px] focus:outline-none placeholder:text-ink-400 ${error ? "border-red-400 focus:border-red-400" : "border-ink-200 focus:border-brand-400"}`} />
+      <ErrorText error={error} />
     </div>
   );
 }
-function Select({ label, required, value, onChange, placeholder, options }: { label?: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; options: string[] }) {
+function Select({ label, required, value, onChange, placeholder, options, error }: { label?: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; options: string[]; error?: string }) {
   return (
     <div>
       {label && <Label required={required}>{label}</Label>}
       <div className="relative">
         <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}
-          className={`w-full px-3 pr-9 py-2.5 rounded-lg border border-ink-200 text-[13.5px] bg-white focus:outline-none focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}>
+          className={`w-full px-3 pr-9 py-2.5 rounded-lg border text-[13.5px] bg-white focus:outline-none ${error ? "border-red-400 focus:border-red-400" : "border-ink-200 focus:border-brand-400"} ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}>
           <option value="" disabled>{placeholder}</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
       </div>
+      <ErrorText error={error} />
     </div>
   );
 }

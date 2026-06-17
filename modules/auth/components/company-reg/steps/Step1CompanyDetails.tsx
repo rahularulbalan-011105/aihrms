@@ -69,6 +69,12 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
     if (!data.state)               errs.state        = "Required";
     if (!data.city?.trim())        errs.city         = "Required";
     if (!data.address?.trim())     errs.address      = "Required";
+    if (data.gstNumber?.trim() && !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(data.gstNumber.trim())) {
+      errs.gstNumber = "Invalid GST format (e.g. 22AAAAA0000A1Z5)";
+    }
+    if (data.panNumber?.trim() && !/^[A-Z]{5}\d{4}[A-Z]$/.test(data.panNumber.trim())) {
+      errs.panNumber = "Invalid PAN format (e.g. ABCDE1234F)";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -139,12 +145,12 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Company / Agency Name" required icon={<BuildingIcon size={14} />}
                   value={data.companyName} onChange={(v) => set("companyName", v)}
-                  placeholder="Enter company or agency name" error={errors.companyName} />
+                  placeholder="Enter company or agency name" error={errors.companyName} maxLength={200} />
                 <Field label="Legal Business Name" required icon={<DocIcon />}
                   value={data.legalName} onChange={(v) => set("legalName", v)}
-                  placeholder="Enter legal business name" error={errors.legalName} />
+                  placeholder="Enter legal business name" error={errors.legalName} maxLength={200} />
                 <Field label="Website (Optional)" icon={<GlobeIcon />}
-                  value={data.website} onChange={(v) => set("website", v)} placeholder="https://www.yourcompany.com" />
+                  value={data.website} onChange={(v) => set("website", v)} placeholder="https://www.yourcompany.com" maxLength={300} />
 
                 <Select label="Industry / Specialization" required icon={<BriefcaseIcon />}
                   value={data.industry} onChange={(v) => set("industry", v)} placeholder="Select primary industry"
@@ -155,16 +161,24 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
                   options={["1-10 Employees", "11-50 Employees", "51-200 Employees", "201-500 Employees", "500+ Employees"]}
                   error={errors.companySize} />
                 <Field label="Founded Year (Optional)" icon={<CalendarIcon />}
-                  value={data.foundedYear} onChange={(v) => set("foundedYear", v)} placeholder="Select founded year" />
+                  value={data.foundedYear}
+                  onChange={(v) => set("foundedYear", v.replace(/\D/g, "").slice(0, 4))}
+                  placeholder="e.g. 2010" maxLength={4} />
 
                 <Select label="Company Type" required icon={<TagIcon />}
                   value={data.companyType} onChange={(v) => set("companyType", v)} placeholder="Select company type"
                   options={["Private Limited", "Public Limited", "LLP", "Partnership", "Proprietorship"]}
                   error={errors.companyType} />
                 <Field label="GST Number (Optional)" icon={<DocIcon />}
-                  value={data.gstNumber} onChange={(v) => set("gstNumber", v)} placeholder="Enter GST number" />
+                  value={data.gstNumber}
+                  onChange={(v) => set("gstNumber", v.toUpperCase().slice(0, 15))}
+                  placeholder="e.g. 22AAAAA0000A1Z5"
+                  maxLength={15} error={errors.gstNumber} />
                 <Field label="PAN Number (Optional)" icon={<DocIcon />}
-                  value={data.panNumber} onChange={(v) => set("panNumber", v)} placeholder="Enter PAN number" />
+                  value={data.panNumber}
+                  onChange={(v) => set("panNumber", v.toUpperCase().slice(0, 10))}
+                  placeholder="e.g. ABCDE1234F"
+                  maxLength={10} error={errors.panNumber} />
               </div>
             </Section>
 
@@ -181,7 +195,7 @@ export default function Step1CompanyDetails({ data, onChange, onContinue }: Prop
                   error={errors.state} />
                 <Field label="City" required icon={<DocIcon />}
                   value={data.city} onChange={(v) => set("city", v)} placeholder="Enter city"
-                  error={errors.city} />
+                  error={errors.city} maxLength={100} />
               </div>
 
               <div className="mt-4">
@@ -332,9 +346,10 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
     </label>
   );
 }
-function Field({ label, required, icon, value, onChange, placeholder, error }: {
+function Field({ label, required, icon, value, onChange, placeholder, error, maxLength }: {
   label: string; required?: boolean; icon?: React.ReactNode;
   value: string; onChange: (v: string) => void; placeholder?: string; error?: string;
+  maxLength?: number;
 }) {
   return (
     <div>
@@ -345,6 +360,7 @@ function Field({ label, required, icon, value, onChange, placeholder, error }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          maxLength={maxLength}
           className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
         />
       </div>

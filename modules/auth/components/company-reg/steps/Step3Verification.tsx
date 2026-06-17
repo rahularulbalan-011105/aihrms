@@ -6,6 +6,7 @@ import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
 import { uploadCompanyLogo } from "@/modules/auth/services/company.service";
+import { authService } from "@/modules/auth/services/auth.service";
 
 interface Props {
   company: CompanyData;
@@ -17,8 +18,13 @@ interface Props {
 export default function Step3Verification({ company, admin, onBack, onEdit }: Props) {
   const router = useRouter();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+
+  const bothVerified = emailVerified && phoneVerified;
 
   async function handleComplete() {
+    if (!bothVerified) return;
     setIsCompleting(true);
     if (company.logoFile) {
       await uploadCompanyLogo(company.logoFile).catch(() => {});
@@ -103,6 +109,9 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
                 helperLeft="Didn't receive the code?"
                 helperRight="Resend Code"
                 helperRightIcon={<RefreshIcon />}
+                canResend
+                verified={emailVerified}
+                onVerified={() => setEmailVerified(true)}
               />
               <div className="hidden lg:flex items-center justify-center">
                 <span className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[18px] font-bold">+</span>
@@ -114,6 +123,8 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
                 helperRight="Change Number"
                 helperRightIcon={<ArrowRight />}
                 onChangeTarget={() => onEdit(2)}
+                verified={phoneVerified}
+                onVerified={() => setPhoneVerified(true)}
               />
             </div>
 
@@ -157,12 +168,13 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
                 </button>
                 <button
                   onClick={handleComplete}
-                  disabled={isCompleting}
-                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-75"
+                  disabled={isCompleting || !bothVerified}
+                  title={bothVerified ? undefined : "Verify both email and phone to continue"}
+                  className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: "var(--gradient-brand)" }}>
                   {isCompleting
                     ? <><SpinnerIcon /> Setting up…</>
-                    : <>Verify &amp; Complete <ArrowRight /></>
+                    : <>Complete Setup <ArrowRight /></>
                   }
                 </button>
               </div>
@@ -175,22 +187,67 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
 }
 
 /* ────────────────── Pieces ────────────────── */
-function OtpCard({ title, target, helperLeft, helperRight, helperRightIcon, onChangeTarget }: {
+function OtpCard({ title, target, helperLeft, helperRight, helperRightIcon, onChangeTarget, canResend, verified, onVerified }: {
   title: string; target: string;
   helperLeft: string; helperRight: string; helperRightIcon?: React.ReactNode;
   onChangeTarget?: () => void;
+  canResend?: boolean;
+  verified: boolean;
+  onVerified: () => void;
 }) {
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
-  const [seconds, setSeconds] = useState(292); // 4:52
+  const [seconds, setSeconds] = useState(300);
+  const [verifying, setVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [resending, setResending] = useState(false);
   const refs = useRef<HTMLInputElement[]>([]);
 
   useEffect(() => {
-    if (seconds <= 0) return;
+    if (verified || seconds <= 0) return;
     const t = setInterval(() => setSeconds((s) => s - 1), 1000);
     return () => clearInterval(t);
-  }, [seconds]);
+  }, [seconds, verified]);
+
+  const fullOtp = digits.join("");
+
+  useEffect(() => {
+    if (fullOtp.length !== 6 || verified || verifying) return;
+    void handleVerify(fullOtp);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullOtp]);
+
+  async function handleVerify(otp: string) {
+    setVerifying(true);
+    setOtpError("");
+    try {
+      await authService.verifyOtp(target, otp);
+      onVerified();
+    } catch {
+      setOtpError("Invalid code. Please try again.");
+      setDigits(["", "", "", "", "", ""]);
+      setTimeout(() => refs.current[0]?.focus(), 0);
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    setOtpError("");
+    try {
+      await authService.resendOtp(target);
+    } catch {
+      // non-fatal
+    } finally {
+      setResending(false);
+      setSeconds(300);
+      setDigits(["", "", "", "", "", ""]);
+      setTimeout(() => refs.current[0]?.focus(), 0);
+    }
+  }
 
   const setAt = (i: number, v: string) => {
+    if (verified || verifying) return;
     const ch = v.replace(/\D/g, "").slice(-1);
     setDigits((arr) => arr.map((d, j) => (j === i ? ch : d)));
     if (ch && i < 5) refs.current[i + 1]?.focus();
@@ -201,43 +258,73 @@ function OtpCard({ title, target, helperLeft, helperRight, helperRightIcon, onCh
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
+  const expired = seconds <= 0;
 
   return (
-    <div className="rounded-xl border border-ink-100 p-5">
+    <div className={`rounded-xl border p-5 transition-colors ${verified ? "border-green-200 bg-green-50/40" : "border-ink-100"}`}>
       <div className="flex items-center justify-between">
         <h4 className="font-display font-bold text-[14px]">{title}</h4>
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">Sent</span>
+        {verified
+          ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 flex items-center gap-1"><CheckIcon /> Verified</span>
+          : <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">Sent</span>
+        }
       </div>
       <p className="mt-2 text-[12px] text-ink-500">We&apos;ve sent a 6-digit code to</p>
       <div className="text-[13px] font-semibold text-brand-700 mt-0.5 break-all">{target}</div>
-      <p className="text-[12px] text-ink-500 mt-2">Enter the code below to verify.</p>
 
-      <div className="mt-3 flex gap-2">
-        {digits.map((d, i) => (
-          <input
-            key={i}
-            ref={(el) => { if (el) refs.current[i] = el; }}
-            value={d}
-            onChange={(e) => setAt(i, e.target.value)}
-            onKeyDown={(e) => onKey(i, e)}
-            inputMode="numeric"
-            maxLength={1}
-            className="w-10 h-12 rounded-lg border border-ink-200 text-center text-[16px] font-semibold focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink-700">
-        <ClockIcon /> Code expires in <span className="text-green-600 font-bold">{mm}:{ss}</span>
-      </div>
+      {verified ? (
+        <div className="mt-4 flex items-center gap-2 text-[13px] text-green-700 font-semibold">
+          <CheckIcon /> Successfully verified
+        </div>
+      ) : (
+        <>
+          <p className="text-[12px] text-ink-500 mt-2">Enter the code below to verify.</p>
+          <div className={`mt-3 flex gap-2 ${verifying ? "opacity-50 pointer-events-none" : ""}`}>
+            {digits.map((d, i) => (
+              <input
+                key={i}
+                ref={(el) => { if (el) refs.current[i] = el; }}
+                value={d}
+                onChange={(e) => setAt(i, e.target.value)}
+                onKeyDown={(e) => onKey(i, e)}
+                inputMode="numeric"
+                maxLength={1}
+                className="w-10 h-12 rounded-lg border border-ink-200 text-center text-[16px] font-semibold focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            ))}
+            {verifying && <span className="self-center ml-1 text-brand-600"><SpinnerIcon /></span>}
+          </div>
+          {otpError && <p className="mt-2 text-[11.5px] text-red-600" role="alert">{otpError}</p>}
+          {!expired
+            ? <div className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-ink-700"><ClockIcon /> Expires in <span className="text-green-600 font-bold">{mm}:{ss}</span></div>
+            : <div className="mt-3 text-[12px] text-red-500">Code expired — please resend.</div>
+          }
+        </>
+      )}
 
       <div className="mt-3 rounded-md bg-ink-100/60 px-3.5 py-2.5 flex items-center justify-between text-[12px]">
         <span className="flex items-center gap-1.5 text-ink-700">
           <InfoIcon /> {helperLeft}
         </span>
-        <button onClick={onChangeTarget} className="inline-flex items-center gap-1 text-brand-700 font-semibold">
-          {helperRight} {helperRightIcon}
-        </button>
+        {canResend ? (
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || verified}
+            className="inline-flex items-center gap-1 text-brand-700 font-semibold disabled:opacity-40"
+          >
+            {resending ? <SpinnerIcon /> : helperRightIcon} {helperRight}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onChangeTarget}
+            disabled={verified}
+            className="inline-flex items-center gap-1 text-brand-700 font-semibold disabled:opacity-40"
+          >
+            {helperRight} {helperRightIcon}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -310,6 +397,7 @@ function SpinnerIcon() {
     </svg>
   );
 }
+function CheckIcon() { return (<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
 function PencilIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M16 4l4 4-11 11H5v-4L16 4z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }
 function BuildingIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" stroke="currentColor" strokeWidth="1.6" /><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
 function UserIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" /><path d="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" stroke="currentColor" strokeWidth="1.6" /></svg>); }

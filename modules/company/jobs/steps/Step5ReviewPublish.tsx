@@ -10,10 +10,15 @@ interface Props {
   onBack: () => void;
   onEdit: (step: 1 | 2 | 3 | 4) => void;
   onPublish: () => void;
+  onSaveDraft?: () => void;
+  publishing?: boolean;
+  savingDraft?: boolean;
+  publishError?: string | null;
 }
 
-export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish }: Props) {
+export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, onSaveDraft, publishing = false, savingDraft = false, publishError = null }: Props) {
   const [confirm, setConfirm] = useState(true);
+  const busy = publishing || savingDraft;
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -26,11 +31,14 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish }: 
           <p className="text-ink-500 text-[12.5px]">Review all details before publishing your job.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition">Save Draft</button>
-          <button onClick={onPublish} disabled={!confirm}
-            className={`px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2 ${confirm ? "" : "opacity-50 cursor-not-allowed"}`}
+          <button onClick={onSaveDraft} disabled={busy}
+            className={`px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition ${busy ? "opacity-50 cursor-not-allowed" : ""}`}>
+            {savingDraft ? "Saving…" : "Save Draft"}
+          </button>
+          <button onClick={onPublish} disabled={!confirm || busy}
+            className={`px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2 ${confirm && !busy ? "" : "opacity-50 cursor-not-allowed"}`}
             style={{ background: "var(--gradient-brand)" }}>
-            Publish Job <PaperPlane />
+            {publishing ? "Publishing…" : "Publish Job"} <PaperPlane />
           </button>
         </div>
       </div>
@@ -94,6 +102,13 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish }: 
             </div>
           </SectionCard>
 
+          {/* Publish error */}
+          {publishError && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-[12.5px] text-red-700">
+              {publishError}
+            </div>
+          )}
+
           {/* Confirmation */}
           <div className="rounded-xl border border-ink-100 p-4 bg-white flex items-start gap-3">
             <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)}
@@ -109,11 +124,14 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish }: 
               <ArrowLeft /> Previous: Preferences
             </button>
             <div className="flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Save as Draft</button>
-              <button onClick={onPublish} disabled={!confirm}
-                className={`px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2 ${confirm ? "" : "opacity-50 cursor-not-allowed"}`}
+              <button onClick={onSaveDraft} disabled={busy}
+                className={`px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition ${busy ? "opacity-50 cursor-not-allowed" : ""}`}>
+                {savingDraft ? "Saving…" : "Save as Draft"}
+              </button>
+              <button onClick={onPublish} disabled={!confirm || busy}
+                className={`px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2 ${confirm && !busy ? "" : "opacity-50 cursor-not-allowed"}`}
                 style={{ background: "var(--gradient-brand)" }}>
-                Publish Job <PaperPlane />
+                {publishing ? "Publishing…" : "Publish Job"} <PaperPlane />
               </button>
             </div>
           </div>

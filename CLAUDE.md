@@ -92,12 +92,14 @@ S3 support lives in `core_module/src/main/java/com/hiremind/core/storage/`:
 S3 config in `candidate_api/application.properties`:
 ```properties
 hiremind.storage.s3.bucket=hiremind-s3   # set to your bucket name to activate real S3
-hiremind.storage.s3.region=ap-south-1
+hiremind.storage.s3.region=ap-south-1    # candidate_api bucket region
 hiremind.storage.s3.base-folder=hiremind/${spring.profiles.active:local}
 hiremind.storage.s3.access.key=          # explicit creds; omit to use DefaultCredentialsProvider
 hiremind.storage.s3.secret.key=
 spring.profiles.active=local             # controls env prefix: local | dev | prod
 ```
+
+> **Note:** `company_api` uses `ap-southeast-2` — a different S3 bucket/region from `candidate_api`. Do not copy S3 region across services.
 
 > **S3 path format:** `{baseFolder}/resumes/{profileId}/...` → e.g. `hiremind/local/resumes/{id}/...`
 
@@ -142,8 +144,9 @@ All stored in `localStorage`. **Always use the helpers in `lib/api/config.ts`** 
 | `hiremind_user_name` | `getStoredUserName()` / `setStoredUserName()` |
 | `hiremind_job_title` | `getStoredJobTitle()` / `setStoredJobTitle()` |
 | `hiremind_company_name` | `getStoredCompanyName()` / `setStoredCompanyName()` |
+| `hiremind_company_logo_url` | `getStoredCompanyLogoUrl()` / `setStoredCompanyLogoUrl()` |
 
-`clearAuth()` wipes all six keys. `hiremind_user_name` is written at candidate registration and kept in sync by `fetchCandidateProfile()`. `hiremind_company_name` is written at company registration by `registerCompanyUser()`.
+`clearAuth()` wipes all seven keys. `hiremind_user_name` is written at candidate registration and kept in sync by `fetchCandidateProfile()`. `hiremind_company_name` is written at company registration by `registerCompanyUser()` and refreshed by `fetchCompanyProfile()`. `hiremind_company_logo_url` holds the presigned S3 URL for the company logo, written by `fetchCompanyProfile()` after login.
 
 ---
 
@@ -170,15 +173,19 @@ hiremind_web/
 │   ├── (marketing)/            # Public marketing pages — Header + Footer layout
 │   ├── (auth)/                 # Auth flow — each page owns its full layout
 │   │   ├── error.tsx           # Route-level error boundary for auth pages
-│   │   └── register/candidate/ # /register/candidate (4-step registration)
-│   ├── (app)/                  # Authenticated app shell (with sidebar)
+│   │   ├── register/candidate/ # /register/candidate (4-step registration)
+│   │   └── register/company/   # /register/company (3-step registration)
+│   ├── (app)/                  # Authenticated app shell (with sidebar) — candidates
 │   │   ├── error.tsx           # Route-level error boundary for dashboard
 │   │   ├── layout.tsx          # Wraps ProfileProvider + AppHeader + AppSidebar
 │   │   └── dashboard/page.tsx  # Thin wrapper → <DashboardPage />
-│   ├── (app-wide)/             # Authenticated, full-width (no sidebar)
+│   ├── (app-wide)/             # Authenticated, full-width (no sidebar) — candidates
 │   │   ├── error.tsx           # Route-level error boundary for profile
 │   │   ├── layout.tsx          # AppHeader only — no ProfileProvider, no sidebar
 │   │   └── profile/page.tsx    # Thin wrapper → <ProfilePage />
+│   ├── (company-app)/          # Authenticated shell — company/recruiter users
+│   │   ├── layout.tsx          # CompanyHeader only — no ProfileProvider, no sidebar
+│   │   └── company/dashboard/page.tsx  # Company dashboard (currently static shell)
 │   ├── layout.tsx              # Root layout (html, body, fonts only)
 │   └── globals.css             # Tailwind v4 design tokens — do not rename tokens
 │
@@ -195,17 +202,30 @@ hiremind_web/
 │   │   ├── types/auth.types.ts
 │   │   ├── services/
 │   │   │   ├── auth.service.ts       # registerCandidateUser(), loginUser(), deleteCurrentUser()
-│   │   │   └── candidate.service.ts  # Profile, education, experience, skills, certifications, preferences APIs
+│   │   │   ├── candidate.service.ts  # Profile, education, experience, skills, certifications, preferences, uploads APIs
+│   │   │   └── company.service.ts    # registerCompanyUser(), saveCompanyProfile(), uploadCompanyLogo(), fetchCompanyProfile(), deleteCurrentCompany()
 │   │   └── components/
 │   │       ├── AuthHeader.tsx         # Reusable auth header — h-[72px], BrandLogo size="md"
-│   │       └── candidate-reg/         # 4-step registration components (see Auth Integration section)
-│   │           └── shared/
-│   │               ├── constants.ts   # EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES, etc.
-│   │               ├── hooks.ts       # useConfirmDelete() — shared confirm-delete hook
-│   │               ├── icons.tsx      # Shared SVG icon components
-│   │               ├── types.ts       # ConfirmState, PreferencesData, ExperienceFormData, etc.
-│   │               ├── ui.tsx         # ConfirmDialog, Tooltip, SelectField, etc.
-│   │               └── validators.ts  # isValidEmail, isStrongPassword, isValidMMYYYY, isDateRangeValid
+│   │       ├── LoginPage.tsx          # Role selector; recruiter login → fetchCompanyProfile() → /company/dashboard
+│   │       ├── candidate-reg/         # 4-step registration components (see Auth Integration section)
+│   │       │   └── shared/
+│   │       │       ├── constants.ts   # EMPLOYMENT_TYPE_MAP, EMPLOYMENT_TYPES, etc.
+│   │       │       ├── hooks.ts       # useConfirmDelete() — shared confirm-delete hook
+│   │       │       ├── icons.tsx      # Shared SVG icon components
+│   │       │       ├── types.ts       # ConfirmState, PreferencesData, ExperienceFormData, etc.
+│   │       │       ├── ui.tsx         # ConfirmDialog, Tooltip, SelectField, etc.
+│   │       │       └── validators.ts  # isValidEmail, isStrongPassword, isValidMMYYYY, isDateRangeValid
+│   │       └── company-reg/           # 3-step company registration
+│   │           ├── CompanyRegistration.tsx  # Parent — holds CompanyData state across steps
+│   │           ├── shared/types.ts          # CompanyData (includes logoFile?: File | null)
+│   │           └── steps/
+│   │               ├── Step1CompanyDetails.tsx  # Company details form + logo file picker (JPG/PNG/SVG ≤2MB, preview)
+│   │               ├── Step2AdminDetails.tsx    # Admin details → registerCompanyUser() + saveCompanyProfile()
+│   │               └── Step3Verification.tsx    # OTP stub → uploadCompanyLogo(logoFile) → /company/dashboard
+│   │
+│   ├── company/
+│   │   └── components/
+│   │       └── CompanyHeader.tsx  # "use client" — h-[72px], BrandLogo, search bar, notification icons, click-toggled avatar dropdown (shows logo or initials), logout clears auth
 │   │
 │   └── dashboard/
 │       ├── DashboardPage.tsx          # "use client" orchestrator — stats, search bar, job tabs, right sidebar
@@ -253,9 +273,13 @@ hiremind_web/
 | `/profile` | Candidate profile overview | ✅ Built + API wired |
 | `/profile/edit` | Candidate profile edit (4 tabs) | ✅ Built + API wired |
 | `/improve-match` | Improve match score page | ✅ Built (mock data) |
+| `/register/company` | 3-step company registration | ✅ Built + API wired |
+| `/company/dashboard` | Company/recruiter dashboard | ✅ Built (Active Jobs count live; rest static) |
+| `/company/jobs` | Recruiter job list (All / Published / Drafts) | ✅ Built + API wired |
+| `/company/jobs/new` | 5-step job posting wizard | ✅ Built + API wired |
 | `/jobs` | Job listings | ⏳ Pending |
 | `/candidates` | Candidate search (recruiter) | ⏳ Pending |
-| `/company` | Company profile | ⏳ Pending |
+| `/company/profile` | Company profile page | ⏳ Pending |
 | `/recruiters` | Recruiter management | ⏳ Pending |
 | `/settings` | Settings | ⏳ Pending |
 
@@ -268,6 +292,7 @@ hiremind_web/
 - `(auth)` — login/register flows, **each page owns its full-page layout**
 - `(app)` — authenticated shell with sidebar — wraps `ProfileProvider` → `AppHeader` → `AppSidebar` → `<main>`
 - `(app-wide)` — authenticated full-width shell (no sidebar) — `AppHeader` only, **no `ProfileProvider`**; used for `/profile`
+- `(company-app)` — recruiter/company shell — `CompanyHeader` only; no `ProfileProvider`, no `AppSidebar`; used for `/company/*`
 
 Each route group has its own `error.tsx` for route-level error recovery — do not remove them.
 
@@ -276,6 +301,7 @@ All headers across every route group use **`h-[72px]`** and **`BrandLogo size="m
 - `components/marketing/Header.tsx`
 - `modules/auth/components/AuthHeader.tsx`
 - `modules/dashboard/components/AppHeader.tsx`
+- `modules/company/components/CompanyHeader.tsx`
 
 ### ProfileContext — one fetch, shared everywhere (dashboard only)
 `ProfileProvider` in `(app)/layout.tsx` fetches `GET /api/candidate/profile` **once** using a `useRef(false)` guard (prevents React StrictMode double-invoke). All components in the `(app)` shell call `useProfile()` — never fetch independently.
@@ -391,6 +417,31 @@ resetConfirm();
 - Every inline error message must have `role="alert"` and an `id`; its input must have `aria-describedby` pointing to that id
 - The `Field` component in `Step1BasicInfo.tsx` already implements all three — follow the same pattern for new forms
 
+### Dropdown / menu pattern — click-toggled, not CSS hover
+Never use CSS `group-hover:block` for dropdown menus — the gap between the trigger button and the menu div breaks hover continuity before the cursor reaches the items. Always use click-toggled state + click-outside `useEffect`:
+
+```tsx
+const [menuOpen, setMenuOpen] = useState(false);
+const menuRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  if (!menuOpen) return;
+  function close(e: MouseEvent) {
+    if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+  }
+  document.addEventListener("mousedown", close);
+  return () => document.removeEventListener("mousedown", close);
+}, [menuOpen]);
+
+// In JSX:
+<div className="relative" ref={menuRef}>
+  <button onClick={() => setMenuOpen((o) => !o)}>...</button>
+  {menuOpen && <div className="absolute ...">menu items</div>}
+</div>
+```
+
+`CompanyHeader.tsx` and `AppHeader.tsx` both follow this pattern.
+
 ### Variable naming
 Use meaningful names — **never** single-letter state variables.
 
@@ -418,9 +469,11 @@ Tokens in `app/globals.css` (`@theme` syntax — do not rename):
 ## Auth Integration
 
 ### Login (`/login`)
-Both `LoginPage.tsx` and `LoginForm.tsx` call `loginUser()` in `auth.service.ts`:
+`LoginPage.tsx` calls `loginUser()` in `auth.service.ts`:
 - `POST /api/users/auth/login` — role mapped: `candidate`→`CANDIDATE`, `recruiter`→`RECRUITMENT_COMPANY`
-- Stores tokens + userId via SSR-safe helpers → redirects to `/dashboard`
+- Stores tokens + userId via SSR-safe helpers
+- **Candidate** (`role === "candidate"`) → redirects to `/dashboard`
+- **Recruiter** (`role === "recruiter"`) → calls `fetchCompanyProfile()` (caches `companyName` + `logoUrl` in localStorage) → redirects to `/company/dashboard`
 
 > `authService.login` (mock stub) has been removed. Always use `loginUser()`.
 
@@ -450,6 +503,9 @@ Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"
 - `registerCompanyUser(data: CompanyRegStep2Data)` → `POST /api/users/auth/register` with `accountType: RECRUITMENT_COMPANY`
   - Stores tokens + userId via SSR-safe helpers; writes **`hiremind_company_name`** via `setStoredCompanyName()`
   - Throws with field-level error message on failure
+- `saveCompanyProfile(step1: CompanyRegStep1Data)` → `PUT /api/company/company/profile` — sends Step 1 details; sets status DRAFT → ACTIVE; updates `hiremind_company_name` in localStorage
+- `uploadCompanyLogo(file: File)` → `POST /api/company/company/logo/upload` — multipart; returns S3 `logoKey` or null
+- `fetchCompanyProfile()` → `GET /api/company/company/profile` — caches `companyName` + `logoUrl` (presigned S3 URL) to localStorage; used after login
 - `deleteCurrentCompany()` → `DELETE /api/users/users/me` (rollback; mirrors `deleteCurrentUser()` in auth.service.ts)
 
 **Types** (`auth.types.ts`):
@@ -457,18 +513,68 @@ Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"
 - `CompanyRegStep2Data` — admin details (fullName, designation, email, mobile, password, timeZone, etc.)
 - `CompanyRegData` — `{ step1: CompanyRegStep1Data; step2: CompanyRegStep2Data }`
 
-**Registration flow:**
-1. Step 1 (Company Details) — validated locally; data stored in parent `CompanyRegistration` state; **no API call**
-2. Step 2 (Admin Details) — validates → `registerCompanyUser(step2Data)` → tokens stored → advance to Step 3
-3. Step 3 (Verification) — OTP stub (visual only); "Verify & Complete" → `router.push("/company/dashboard")`
+**`CompanyData`** (shared/types.ts in company-reg) — parent state across all steps; includes `logoFile?: File | null` so the selected logo persists when navigating back to Step 1.
 
-**Pending:** `PUT /api/company/profile` call to save Step 1 company details (after `company_api` is running).
+**Registration flow:**
+1. Step 1 (Company Details) — logo file picker (JPG/PNG/SVG, ≤ 2 MB, inline preview with Change/Remove); validates locally; stores in parent `company` state including `logoFile`; **no API call**
+2. Step 2 (Admin Details) — validates → `registerCompanyUser(step2Data)` → tokens stored → `saveCompanyProfile(step1Data)` — wires Step 1 to `company_api` → advance to Step 3
+3. Step 3 (Verification) — OTP stub (visual only); "Verify & Complete" → `uploadCompanyLogo(company.logoFile)` (non-fatal) → `router.push("/company/dashboard")`
+
+**Logo upload is non-fatal:** if S3 is down, the company is still registered and the profile is saved; only the logo key is missing. The `catch(() => {})` in Step3 ensures the redirect always happens.
+
+**Step 1 logo picker constraints:** accepts `.jpg,.jpeg,.png,.svg`; max 2 MB; validates MIME and size before setting `logoFile`; shows data-URL preview immediately from `FileReader`. Error shown inline below the picker.
 
 ### Company Profile API (`company_api`)
 Endpoints under `API.COMPANY` (`/api/company`) — all require Bearer JWT + `accountType = RECRUITMENT_COMPANY`:
-- `GET /api/company/profile` — get profile (auto-creates DRAFT on first call)
-- `PUT /api/company/profile` — create or update company details; transitions DRAFT → ACTIVE on first save
-- `POST /api/company/logo/upload` — multipart logo upload; returns updated `CompanyProfileResponse`
+- `GET /api/company/company/profile` — get profile (auto-creates DRAFT on first call)
+- `PUT /api/company/company/profile` — create or update company details; transitions DRAFT → ACTIVE on first save
+- `POST /api/company/company/logo/upload` — multipart logo upload; stores S3 key in `logo_file_key`; returns updated `CompanyProfileResponse`
+
+**`CompanyProfileResponse`** (`CompanyProfileDtos.java`) includes:
+- `logoFileKey` — raw S3 key stored in DB
+- `logoUrl` — presigned S3 URL (1-hour TTL); generated by `CompanyProfileService.buildPresignedUrl()` (try-catch, returns null if S3 not configured)
+
+**S3 config** (`company_api/application.properties`):
+```properties
+hiremind.storage.s3.bucket=hiremind-s3
+hiremind.storage.s3.region=ap-southeast-2   # NOTE: different region from candidate_api (ap-south-1)
+hiremind.storage.s3.base-folder=hiremind/${spring.profiles.active:local}
+```
+Logo S3 key format: `logos/{profileId}/{profileId}_logo_{filename}`
+
+**`AwsS3StorageService`** (`core_module`) — catches `Exception` (not just `IOException`) to handle AWS SDK `RuntimeException` subclasses (`S3Exception`, `SdkClientException`) and wrap them as `BusinessException("S3_UPLOAD_FAILED")`.
+
+### Job Posting API (`company_api`)
+Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECRUITMENT_COMPANY` (enforced by `requireCompany()` in `JobService`):
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/company/jobs/draft` | Create a job in `DRAFT` status |
+| `POST` | `/company/jobs/publish` | Create + publish a job in one call (wizard finish) |
+| `PUT` | `/company/jobs/{id}` | Update an existing job (ownership-guarded) |
+| `POST` | `/company/jobs/{id}/publish` | Promote an existing `DRAFT` → `PUBLISHED` |
+| `GET` | `/company/jobs?status=&page=&size=` | Paginated list (filter by `PUBLISHED`/`DRAFT`) |
+| `GET` | `/company/jobs/counts` | `{ total, published, drafts }` for the dashboard |
+| `GET` | `/company/jobs/{id}` | Full job detail |
+
+**Lifecycle:** `JobStatus` enum = `DRAFT, PUBLISHED, CLOSED, EXPIRED`. `publishedAt` set on first publish. `findByIdAndUserId` guards all per-job operations to the owning recruiter.
+
+**Normalized schema** (`V2__jobs_table.sql`): the `jobs` table holds all 1:1 fields (details, requirement scalars, compensation, preference scalars, lifecycle). Four child tables hold the repeating values:
+- `job_skills` (`JobSkill` entity — `@OneToMany` from `Job`, `orphanRemoval=true`): `name, min_experience, unit, mandatory, sort_order`
+- `job_benefits`, `job_employment_type_prefs`, `job_notice_period_prefs` — `@ElementCollection Set<String>` on `Job`
+
+**Salary fields are `NUMERIC(14,2)` / `BigDecimal`** — the frontend stores formatted strings (`"12,00,000"`); `job.service.ts` strips commas to a number in `draftToRequest` before sending. Enum-like fields stored as `@Enumerated(EnumType.STRING)` → VARCHAR (matches `company_status`).
+
+**Frontend** — `modules/company/jobs/services/job.service.ts`:
+- `publishJob(draft)` → `POST /company/jobs/publish` → returns `{ id }`; wizard redirects to `/company/jobs/published?jobId=<id>`
+- `saveDraftJob(draft)` → `POST /company/jobs/draft`
+- `listJobs(status?, page?, size?)` → `GET /company/jobs` (used by `JobsList.tsx`)
+- `fetchJobCounts()` → `GET /company/jobs/counts` (used by `CompanyDashboard.tsx`; non-fatal — counts stay 0 on error)
+- `draftToRequest(draft)` maps `JobDraft` → `JobUpsertRequest`: `confidential: d.confidential === "Yes"`, salary commas stripped, empty dates → `null`, skills → `{ name, minExperience, unit:"YEARS", mandatory:true }`
+
+`Step1JobDetails` validates required fields (`title`, `roleCategory`, `workplaceLocation`, `description`) before advancing — both "Next: Requirements" buttons call `handleContinue()`. `CompanySidebar` "Jobs" link points to `/company/jobs` (the list), which has a "Post New Job" CTA → `/company/jobs/new`.
+
+> **Do not** add a separate preference "job shift" column — Step 4 `jobShift` is not persisted; Step 1 `jobShift` maps to `jobs.job_shift`. Working hours / time zone are persisted.
 
 ### Auth / Session — 401/403 Handling
 `authedFetch` in `candidate.service.ts` redirects to `/login` on any `401` or `403`. Access token TTL: **1440 min** in dev (`users_api/application.properties`).
@@ -583,6 +689,9 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 - **Do not** use `preferredLocation: string` in `CandidateRegStep3Data` — it is now `preferredLocations: string[]`; the backend join (`", "`) happens in `buildPreferencesPayload`
 - **Do not** add a `yearsOfExperience` field to the `Skill` interface or `AddSkillModal` — experience is captured via `experienceValue`/`experienceUnit` and sent as `experienceYears` via `buildSkillPayload`
 - **Do not** add `<AuthStepper>` to `RoleSelectionPage` (signup page) — it has been removed
+- **Do not** use CSS `group-hover:block` for dropdown menus — gaps between trigger and menu break hover before the user can click; always use click-toggled `useState` + click-outside `useEffect` (see Dropdown pattern above)
+- **Do not** call `useProfile()` or use `ProfileProvider` in any `(company-app)` route — company users have no candidate profile; read `getStoredCompanyName()` / `getStoredCompanyLogoUrl()` from localStorage in a `useEffect`
+- **Do not** use `authedFetch` for company logo upload — use bare `fetch` with `Authorization` header and no `Content-Type` (multipart boundary set by browser), same as `uploadCompanyLogo()` in `company.service.ts`
 
 ---
 
@@ -595,8 +704,8 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 5. **Token refresh** — replace 401 redirect with silent refresh via NextAuth v5
 6. **NextAuth v5** — replace localStorage tokens with real session management
 7. **Middleware** — route protection and RBAC
-8. **Company registration — wire Step 1 to company_api** — after Step 2 registration succeeds, call `PUT /api/company/profile` with Step 1 company details; currently Step 1 data is stored in React state only
-9. **Company dashboard** — `/company/dashboard` — replace static page with real data from `company_api`
+8. **Company dashboard — real data** — "Active Jobs" stat is now live via `fetchJobCounts()`; remaining stats (candidates, applications, interviews, hires) + Recent Activity are still static and need their own `company_api` domains
+9. **Jobs — remaining flows** — job **edit** page (wire `PUT /company/jobs/{id}` + `GET /company/jobs/{id}` to pre-populate the wizard), close/expire actions, row action menu in `JobsList`, and pagination controls
 10. **Dashboard — real data** — replace mock job/stats data with live API calls
 11. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
 12. **LoginPage accessibility** — add `htmlFor`/`id` to all form labels and inputs (same pattern as `Step1BasicInfo.tsx`)
@@ -604,3 +713,4 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 14. **candidate.service.ts split** — mixed domains; split into `profile.service.ts`, `experience.service.ts`, `education.service.ts`, `skills.service.ts`, `certifications.service.ts`, `preferences.service.ts`, `master.service.ts`, `upload.service.ts`
 15. **React Query + Zustand** — install after backend integration complete
 16. **ESLint + Prettier** — code quality tooling
+17. **Company logo refresh after registration** — after Step 3 uploads the logo, `hiremind_company_logo_url` is not yet populated in localStorage (upload returns a key, not a URL); a `fetchCompanyProfile()` call in Step 3 after upload would cache the presigned URL so `CompanyHeader` shows the logo immediately on first dashboard load

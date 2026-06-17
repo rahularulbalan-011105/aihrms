@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
-import { registerCompanyUser, saveCompanyProfile } from "@/modules/auth/services/company.service";
+import { registerCompanyUser, saveCompanyProfile, deleteCurrentCompany } from "@/modules/auth/services/company.service";
 import { isValidEmail, isStrongPassword } from "@/modules/auth/components/candidate-reg/shared/validators";
 
 interface Props {
@@ -47,7 +47,9 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
     if (!data.designation?.trim()) errs.designation = "Required";
     if (!data.email?.trim())      errs.email       = "Required";
     else if (!isValidEmail(data.email)) errs.email = "Enter a valid email address";
-    if (!data.mobile?.trim())     errs.mobile      = "Required";
+    if (!data.mobile?.trim())                                    errs.mobile = "Required";
+    else if (data.mobile.trim().length < 7)                    errs.mobile = "Enter a valid mobile number (min 7 digits)";
+    else if (data.mobile.trim().length > 15)                   errs.mobile = "Mobile number too long (max 15 digits)";
     const pwdErr = isStrongPassword(data.password ?? "");
     if (pwdErr)                   errs.password    = pwdErr;
     if (!data.confirmPassword?.trim()) errs.confirmPassword = "Required";
@@ -65,7 +67,12 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
     setErrors((prev) => ({ ...prev, api: undefined }));
     try {
       await registerCompanyUser(data);
-      await saveCompanyProfile(company);
+      try {
+        await saveCompanyProfile(company);
+      } catch (profileErr) {
+        await deleteCurrentCompany().catch(() => {});
+        throw profileErr;
+      }
       onContinue();
     } catch (err) {
       setErrors((prev) => ({ ...prev, api: err instanceof Error ? err.message : "Registration failed. Please try again." }));
@@ -136,17 +143,17 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Full Name" required icon={<UserIcon size={14} />}
                   value={data.fullName} onChange={(v) => set("fullName", v)}
-                  placeholder="Enter full name" error={errors.fullName} />
+                  placeholder="Enter full name" error={errors.fullName} maxLength={100} />
                 <Field label="Designation" required icon={<MailIcon />}
                   value={data.designation} onChange={(v) => set("designation", v)}
-                  placeholder="Enter designation" error={errors.designation} />
+                  placeholder="Enter designation" error={errors.designation} maxLength={100} />
                 <Field label="Department" icon={<DocIcon />}
                   value={data.department} onChange={(v) => set("department", v)}
-                  placeholder="Enter department (e.g., HR, Operations)" />
+                  placeholder="Enter department (e.g., HR, Operations)" maxLength={100} />
 
                 <Field label="Email Address" required icon={<MailIcon />}
                   value={data.email} onChange={(v) => set("email", v)}
-                  placeholder="Enter admin email address" error={errors.email} />
+                  placeholder="Enter admin email address" error={errors.email} maxLength={150} />
 
                 <div>
                   <Label required>Mobile Number</Label>
@@ -251,9 +258,10 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
     </label>
   );
 }
-function Field({ label, required, icon, value, onChange, placeholder, error }: {
+function Field({ label, required, icon, value, onChange, placeholder, error, maxLength }: {
   label: string; required?: boolean; icon?: React.ReactNode;
   value: string; onChange: (v: string) => void; placeholder?: string; error?: string;
+  maxLength?: number;
 }) {
   return (
     <div>
@@ -264,6 +272,7 @@ function Field({ label, required, icon, value, onChange, placeholder, error }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          maxLength={maxLength}
           className={`w-full ${icon ? "pl-9" : "pl-3"} pr-3 py-2.5 rounded-lg border ${error ? "border-red-400" : "border-ink-200"} text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400`}
         />
       </div>
@@ -307,8 +316,14 @@ function PhoneField({ cc, onCc, value, onValue, placeholder }: {
       </div>
       <div className="relative flex-1">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"><PhoneIcon /></span>
-        <input value={value ?? ""} onChange={(e) => onValue(e.target.value)} placeholder={placeholder}
-          className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400" />
+        <input
+          value={value ?? ""}
+          onChange={(e) => onValue(e.target.value.replace(/\D/g, "").slice(0, 15))}
+          inputMode="numeric"
+          maxLength={15}
+          placeholder={placeholder}
+          className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400"
+        />
       </div>
     </div>
   );
