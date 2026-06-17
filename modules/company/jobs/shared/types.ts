@@ -10,7 +10,6 @@ export interface JobDetailsData {
   department: string;
   employmentType: string;
   openings: number;
-  workLocationType: string;
   workplaceLocation: string;
   startingDate: string;
   workMode: "On-site" | "Remote" | "Hybrid";
@@ -25,7 +24,6 @@ export interface JobDetailsData {
   applicationDeadline: string;
   jobExpiry: string;
   confidential: "Yes" | "No";
-  showApplicationCount: boolean;
 }
 
 export interface RequirementsData {
@@ -37,9 +35,11 @@ export interface RequirementsData {
 }
 
 export interface CompensationData {
-  salaryType: "Fixed CTC" | "Salary Range" | "Pay Range" | "Negotiable";
+  salaryType: "Fixed CTC" | "Salary Range";
   currency: string;
   annualCtc: string;
+  salaryMin: string;
+  salaryMax: string;
   basicPay: string;
   hra: string;
   specialAllowance: string;
@@ -79,7 +79,6 @@ export const EMPTY_JOB: JobDraft = {
     department: "",
     employmentType: "Full-time",
     openings: 1,
-    workLocationType: "",
     workplaceLocation: "",
     startingDate: "",
     workMode: "On-site",
@@ -94,7 +93,6 @@ export const EMPTY_JOB: JobDraft = {
     applicationDeadline: "",
     jobExpiry: "",
     confidential: "No",
-    showApplicationCount: true,
   },
   requirements: {
     minExperience: 2,
@@ -113,6 +111,8 @@ export const EMPTY_JOB: JobDraft = {
     salaryType: "Fixed CTC",
     currency: "INR (₹) – Indian Rupee",
     annualCtc: "12,00,000",
+    salaryMin: "",
+    salaryMax: "",
     basicPay: "6,00,000",
     hra: "2,40,000",
     specialAllowance: "1,60,000",
@@ -138,12 +138,11 @@ export const EMPTY_JOB: JobDraft = {
   },
 };
 
-export type StepNum = 1 | 2 | 3 | 4 | 5;
+export type StepNum = 1 | 2 | 3 | 4;
 
 export const JOB_STEPS: { n: StepNum; label: string }[] = [
   { n: 1, label: "Job Details" },
   { n: 2, label: "Requirements" },
   { n: 3, label: "Compensation" },
-  { n: 4, label: "Preferences" },
-  { n: 5, label: "Review & Publish" },
+  { n: 4, label: "Review & Publish" },
 ];

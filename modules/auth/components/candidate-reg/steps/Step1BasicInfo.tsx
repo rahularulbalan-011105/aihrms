@@ -12,7 +12,7 @@ import {
 import { updateCandidateBasicInfo } from "../../../services/candidate.service";
 import {
   PersonIcon, MailIcon, LockIcon, LocationIcon, CalendarIcon,
-  ArrowRightIcon, SpinnerIcon, VerifiedIcon,
+  ArrowRightIcon, SpinnerIcon, VerifiedIcon, EyeIcon, EyeOffIcon,
 } from "../shared/icons";
 import { isValidEmail, isStrongPassword } from "../shared/validators";
 
@@ -46,6 +46,17 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
   const [phoneOtpInput, setPhoneOtpInput]     = useState("");
   const [phoneOtpLoading, setPhoneOtpLoading] = useState(false);
   const [phoneOtpError, setPhoneOtpError]     = useState<string | null>(null);
+
+  const [showPwd, setShowPwd]         = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const pwd = data.password ?? "";
+  const pwdChecks = {
+    length:  pwd.length >= 8,
+    upper:   /[A-Z]/.test(pwd),
+    number:  /\d/.test(pwd),
+    special: /[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]~`]/.test(pwd),
+  };
 
   const handleSendEmailOtp = async () => {
     if (!isValidEmail(data.email)) {
@@ -156,6 +167,7 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
       }
     }
     if (!data.currentLocation.trim()) errs.currentLocation = "Required";
+    if (!data.professionalSummary.trim()) errs.professionalSummary = "Required";
     if (!data.acceptTerms) errs.acceptTerms = "You must accept the terms";
     return errs;
   };
@@ -286,15 +298,32 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
         <Field id="password" label="Password" required error={localErrors.password}>
           <InputWithIcon id="password" icon={<LockIcon />} value={data.password}
             onChange={(v) => { set("password", v); setLocalErrors((p) => ({ ...p, password: "" })); }}
-            placeholder="Create a strong password" type="password" hasError={!!localErrors.password}
+            placeholder="Create a strong password" type={showPwd ? "text" : "password"} hasError={!!localErrors.password}
+            trailing={
+              <button type="button" onClick={() => setShowPwd((s) => !s)} className="text-ink-400 hover:text-ink-700" aria-label="Toggle password visibility">
+                {showPwd ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            }
             aria-describedby={localErrors.password ? "password-error" : undefined} />
         </Field>
         <Field id="confirmPassword" label="Confirm Password" required error={localErrors.confirmPassword}>
           <InputWithIcon id="confirmPassword" icon={<LockIcon />} value={data.confirmPassword}
             onChange={(v) => { set("confirmPassword", v); setLocalErrors((p) => ({ ...p, confirmPassword: "" })); }}
-            placeholder="Confirm your password" type="password" hasError={!!localErrors.confirmPassword}
+            placeholder="Confirm your password" type={showConfirm ? "text" : "password"} hasError={!!localErrors.confirmPassword}
+            trailing={
+              <button type="button" onClick={() => setShowConfirm((s) => !s)} className="text-ink-400 hover:text-ink-700" aria-label="Toggle confirm password visibility">
+                {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            }
             aria-describedby={localErrors.confirmPassword ? "confirmPassword-error" : undefined} />
         </Field>
+
+        <div className="md:col-span-2 -mt-1 flex flex-wrap gap-2">
+          <PwdChip ok={pwdChecks.length}  label="Min 8 characters" />
+          <PwdChip ok={pwdChecks.upper}   label="1 uppercase letter" />
+          <PwdChip ok={pwdChecks.number}  label="1 number" />
+          <PwdChip ok={pwdChecks.special} label="1 special character" />
+        </div>
 
         <Field id="dateOfBirth" label="Date of Birth" required error={localErrors.dateOfBirth}>
           <InputWithIcon id="dateOfBirth" icon={<CalendarIcon />} value={data.dateOfBirth}
@@ -315,18 +344,24 @@ export default function Step1BasicInfo({ data, onChange, onNext, isReturning = f
       {/* Professional Summary */}
       <div className="mt-3">
         <label htmlFor="professionalSummary" className="block text-[13px] font-semibold text-ink-700 mb-1.5">
-          Professional Summary <span className="text-ink-400 font-normal">(Optional)</span>
+          Professional Summary <span className="text-red-500" aria-hidden="true">*</span>
         </label>
         <textarea
           id="professionalSummary"
           value={data.professionalSummary}
-          onChange={(e) => set("professionalSummary", e.target.value)}
+          onChange={(e) => { set("professionalSummary", e.target.value); setLocalErrors((p) => ({ ...p, professionalSummary: "" })); }}
           placeholder="Briefly describe your professional background, key skills, and career goals..."
           rows={4}
           maxLength={2000}
-          className="w-full px-4 py-3 rounded-xl border border-ink-200 text-[14px] text-ink-700 bg-white outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition resize-none"
+          aria-describedby={localErrors.professionalSummary ? "professionalSummary-error" : undefined}
+          className={`w-full px-4 py-3 rounded-xl border text-[14px] text-ink-700 bg-white outline-none focus:ring-2 focus:ring-brand-100 transition resize-none ${localErrors.professionalSummary ? "border-red-400 focus:border-red-400" : "border-ink-200 focus:border-brand-500"}`}
         />
-        <p className="mt-1 text-[11.5px] text-ink-400 text-right">{data.professionalSummary.length}/2000</p>
+        <div className="mt-1 flex items-center justify-between">
+          {localErrors.professionalSummary
+            ? <p id="professionalSummary-error" role="alert" className="text-[12px] text-red-500 flex items-center gap-1"><span>⚠</span>{localErrors.professionalSummary}</p>
+            : <span />}
+          <p className="text-[11.5px] text-ink-400">{data.professionalSummary.length}/2000</p>
+        </div>
       </div>
 
       {/* Terms + Continue */}
@@ -392,9 +427,18 @@ function Field({ id, label, required, hint, error, children }: {
   );
 }
 
-function InputWithIcon({ icon, value, onChange, placeholder, type = "text", hasError = false, disabled = false, ...rest }: {
+function PwdChip({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium ${
+      ok ? "bg-green-50 text-green-700 border-green-100" : "bg-brand-50 text-brand-700 border-brand-100"
+    }`}>
+      {ok ? "✓" : "○"} {label}
+    </span>
+  );
+}
+function InputWithIcon({ icon, value, onChange, placeholder, type = "text", hasError = false, disabled = false, trailing, ...rest }: {
   icon: React.ReactNode; value: string; onChange: (v: string) => void;
-  placeholder: string; type?: string; hasError?: boolean; disabled?: boolean; [key: string]: unknown;
+  placeholder: string; type?: string; hasError?: boolean; disabled?: boolean; trailing?: React.ReactNode; [key: string]: unknown;
 }) {
   return (
     <div className="relative">
@@ -402,13 +446,14 @@ function InputWithIcon({ icon, value, onChange, placeholder, type = "text", hasE
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
         {...(rest as React.InputHTMLAttributes<HTMLInputElement>)}
-        className={`w-full pl-10 pr-4 py-2 rounded-xl border text-[14px] outline-none transition ${
+        className={`w-full pl-10 ${trailing ? "pr-11" : "pr-4"} py-2 rounded-xl border text-[14px] outline-none transition ${
           disabled
             ? "bg-ink-100 border-ink-200 text-ink-500 opacity-60 cursor-not-allowed"
             : hasError
               ? "bg-white border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100"
               : "bg-white border-ink-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         }`} />
+      {trailing && <span className="absolute right-3.5 top-1/2 -translate-y-1/2">{trailing}</span>}
     </div>
   );
 }

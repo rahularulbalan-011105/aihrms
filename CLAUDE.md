@@ -225,7 +225,7 @@ hiremind_web/
 │   │
 │   ├── company/
 │   │   └── components/
-│   │       └── CompanyHeader.tsx  # "use client" — h-[72px], BrandLogo, search bar, notification icons, click-toggled avatar dropdown (shows logo or initials), logout clears auth
+│   │       └── CompanyHeader.tsx  # "use client" — h-[72px], BrandLogo, search bar, notification icons, click-toggled avatar dropdown (shows logo or initials) with Settings link + logout (clears auth)
 │   │
 │   └── dashboard/
 │       ├── DashboardPage.tsx          # "use client" orchestrator — stats, search bar, job tabs, right sidebar
@@ -273,10 +273,12 @@ hiremind_web/
 | `/profile` | Candidate profile overview | ✅ Built + API wired |
 | `/profile/edit` | Candidate profile edit (4 tabs) | ✅ Built + API wired |
 | `/improve-match` | Improve match score page | ✅ Built (mock data) |
+| `/applications` | Candidate My Applications (stats, filters, status badges, insights rail) | ✅ Built (mock data) |
+| `/saved-jobs` | Candidate Saved Jobs (reuses `JobCard`, filters, tabs) | ✅ Built (mock data) |
 | `/register/company` | 3-step company registration | ✅ Built + API wired |
 | `/company/dashboard` | Company/recruiter dashboard | ✅ Built (Active Jobs count live; rest static) |
-| `/company/jobs` | Recruiter job list (All / Published / Drafts) | ✅ Built + API wired |
-| `/company/jobs/new` | 5-step job posting wizard | ✅ Built + API wired |
+| `/company/jobs` | Recruiter job list (All / Active / Draft / Closed tabs, stat tiles, filters, insights rail) | ✅ Built + API wired |
+| `/company/jobs/new` | 4-step job posting wizard (Details → Requirements → Compensation → Review) | ✅ Built + API wired |
 | `/jobs` | Job listings | ⏳ Pending |
 | `/candidates` | Candidate search (recruiter) | ⏳ Pending |
 | `/company/profile` | Company profile page | ⏳ Pending |
@@ -302,6 +304,12 @@ All headers across every route group use **`h-[72px]`** and **`BrandLogo size="m
 - `modules/auth/components/AuthHeader.tsx`
 - `modules/dashboard/components/AppHeader.tsx`
 - `modules/company/components/CompanyHeader.tsx`
+
+### Page title standard
+Every in-app **page title** (`<h1>`) uses **`font-display font-extrabold text-[22px] text-ink-900`** (company titles add `tracking-tight`). Subtitle below is `text-[13.5px] text-ink-500 mt-1`. Keep new pages consistent — do not use `text-[24px]` for page titles.
+
+### Company shell parity with candidate dashboard
+The Company Dashboard (`CompanyDashboard.tsx`) and Jobs list (`JobsList.tsx`) follow the **candidate dashboard design system**: shared `.card` surfaces, candidate-style `StatCard` (icon-left tinted square, `text-[18px]`/`text-[22px]` value, inline sub / green delta), `space-y-5` vertical rhythm, `flex gap-6 items-start` main + `w-[300px]` right rail (`hidden lg:block` / `hidden xl:block`), `text-[16px]` main-section / `text-[15px]` rail headers, and `btn-gradient-brand` CTAs. Donut charts use `conic-gradient` (same pattern as `MatchInsightsPanel`).
 
 ### ProfileContext — one fetch, shared everywhere (dashboard only)
 `ProfileProvider` in `(app)/layout.tsx` fetches `GET /api/candidate/profile` **once** using a `useRef(false)` guard (prevents React StrictMode double-invoke). All components in the `(app)` shell call `useProfile()` — never fetch independently.
@@ -563,6 +571,8 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 - `job_skills` (`JobSkill` entity — `@OneToMany` from `Job`, `orphanRemoval=true`): `name, min_experience, unit, mandatory, sort_order`
 - `job_benefits`, `job_employment_type_prefs`, `job_notice_period_prefs` — `@ElementCollection Set<String>` on `Job`
 
+> **`V3__drop_job_work_location_and_show_count.sql`** drops `work_location_type` and `show_application_count` — both fields were removed from the wizard, `Job` entity, and `JobDtos`. Do **not** re-add them.
+
 **Salary fields are `NUMERIC(14,2)` / `BigDecimal`** — the frontend stores formatted strings (`"12,00,000"`); `job.service.ts` strips commas to a number in `draftToRequest` before sending. Enum-like fields stored as `@Enumerated(EnumType.STRING)` → VARCHAR (matches `company_status`).
 
 **Frontend** — `modules/company/jobs/services/job.service.ts`:
@@ -572,9 +582,11 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 - `fetchJobCounts()` → `GET /company/jobs/counts` (used by `CompanyDashboard.tsx`; non-fatal — counts stay 0 on error)
 - `draftToRequest(draft)` maps `JobDraft` → `JobUpsertRequest`: `confidential: d.confidential === "Yes"`, salary commas stripped, empty dates → `null`, skills → `{ name, minExperience, unit:"YEARS", mandatory:true }`
 
-`Step1JobDetails` validates required fields (`title`, `roleCategory`, `workplaceLocation`, `description`) before advancing — both "Next: Requirements" buttons call `handleContinue()`. `CompanySidebar` "Jobs" link points to `/company/jobs` (the list), which has a "Post New Job" CTA → `/company/jobs/new`.
+`Step1JobDetails` validates required fields (`title`, `workplaceLocation`, `description`) before advancing — `roleCategory` is **optional**. Both "Next: Requirements" buttons call `handleContinue()`. `CompanySidebar` "Jobs" link points to `/company/jobs` (the list), which has a "Post New Job" CTA → `/company/jobs/new`.
 
-> **Do not** add a separate preference "job shift" column — Step 4 `jobShift` is not persisted; Step 1 `jobShift` maps to `jobs.job_shift`. Working hours / time zone are persisted.
+**Wizard is 4 steps** (`StepNum = 1 | 2 | 3 | 4`): Step1 Details → Step2 Requirements → Step3 Compensation → Step4 Review (rendered by `Step5ReviewPublish.tsx`, kept under its original filename). The **Preferences step was removed** (`Step4Preferences.tsx` deleted); `JobDraft.preferences` still exists with `EMPTY_JOB` defaults and is still submitted by `draftToRequest`. `RightRail` takes `showProgress` / `showJobSummary` props (both hidden on Step 1/2 as configured). Salary Range salary type shows Min/Max inputs (`salaryMin`/`salaryMax` — frontend-only, not sent to backend).
+
+> **Do not** add a separate preference "job shift" column — `jobShift` is a Step 1 field that maps to `jobs.job_shift`. Working hours / time zone (from `JobDraft.preferences` defaults) are persisted.
 
 ### Auth / Session — 401/403 Handling
 `authedFetch` in `candidate.service.ts` redirects to `/login` on any `401` or `403`. Access token TTL: **1440 min** in dev (`users_api/application.properties`).

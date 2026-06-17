@@ -57,7 +57,6 @@ function draftToRequest(draft: JobDraft) {
       department: orNull(d.department),
       employmentType: orNull(d.employmentType),
       openings: d.openings,
-      workLocationType: orNull(d.workLocationType),
       workplaceLocation: orNull(d.workplaceLocation),
       workMode: orNull(d.workMode),
       startingDate: orNull(d.startingDate),
@@ -71,7 +70,6 @@ function draftToRequest(draft: JobDraft) {
       applicationDeadline: orNull(d.applicationDeadline),
       jobExpiry: orNull(d.jobExpiry),
       confidential: d.confidential === "Yes",
-      showApplicationCount: d.showApplicationCount,
     },
     requirements: {
       requirementExpYears: r.minExperience ?? null,
@@ -142,7 +140,7 @@ export async function saveDraftJob(draft: JobDraft): Promise<{ id: string }> {
 
 /** GET /company/jobs — paginated list, optionally filtered by status. */
 export async function listJobs(
-  status?: "PUBLISHED" | "DRAFT",
+  status?: JobApiResponse["status"],
   page = 0,
   size = 20,
 ): Promise<{ content: JobApiResponse[]; totalElements: number }> {

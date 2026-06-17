@@ -36,13 +36,17 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
     <div className="max-w-[1400px] mx-auto">
       <div className="flex items-start justify-between gap-4 mb-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-lg border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-1.5">
-          <ArrowLeft /> Back to Job Details
+          <ArrowLeft /> Back
         </button>
         <div className="text-center flex-1">
           <h1 className="font-display text-[22px] font-extrabold">Post a New Job</h1>
           <p className="text-ink-500 text-[12.5px]">Define the requirements and skills needed for this role.</p>
         </div>
-        <div className="shrink-0" />
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={onContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+            Next: Compensation <ArrowRight />
+          </button>
+        </div>
       </div>
 
       <div className="mb-6"><JobStepper current={2} /></div>
@@ -59,7 +63,7 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label required>Minimum Experience</Label>
-                <div className="grid grid-cols-[1fr_140px] gap-2">
+                <div className="grid grid-cols-[110px_100px] gap-2">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"><BriefIcon /></span>
                     <input type="number" min={0} value={r.minExperience}
@@ -112,17 +116,15 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
             </div>
           </Card>
 
-          <div className="flex items-center justify-between pt-4">
-            <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Cancel</button>
-            <button onClick={onContinue} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
-              Next: Compensation <ArrowRight />
-            </button>
+          <div className="flex items-center pt-4">
+            <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><ArrowLeft /> Back</button>
           </div>
         </div>
 
         <RightRail
           current={2}
           data={data}
+          showProgress={false}
           tips={{
             title: "Tips for a great job post",
             tips: ["Add clear and specific requirements", "List key skills with relevant experience", "Keep responsibilities concise and outcome-focused", "Mention must-have vs. preferred skills", "Review before moving to next step"],

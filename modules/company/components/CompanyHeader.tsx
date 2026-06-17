@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import BrandLogo from "@/components/marketing/BrandLogo";
 import { getStoredCompanyName, getStoredCompanyLogoUrl, clearAuth } from "@/lib/api/config";
@@ -95,6 +96,13 @@ export default function CompanyHeader() {
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-ink-100 shadow-lg py-1.5 z-50">
+              <Link
+                href="/company/settings"
+                onClick={() => setMenuOpen(false)}
+                className="w-full text-left px-4 py-2.5 text-[13px] text-ink-700 font-semibold hover:bg-ink-100 transition flex items-center gap-2"
+              >
+                <GearIcon /> Settings
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -127,4 +135,5 @@ function SearchIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" 
 function BellIcon() { return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>); }
 function EnvelopeIcon() { return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6"/></svg>); }
 function ChevronDown() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>); }
+function GearIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4.8a7 7 0 0 0-2.1-1.2L14 3h-4l-.4 2.4a7 7 0 0 0-2.1 1.2l-2.4-.8-2 3.4 2 1.6c-.1.4-.1.8-.1 1.2s0 .8.1 1.2l-2 1.6 2 3.4 2.4-.8c.7.5 1.4.9 2.1 1.2L10 21h4l.4-2.4c.7-.3 1.4-.7 2.1-1.2l2.4.8 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>); }
 function LogoutIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>); }

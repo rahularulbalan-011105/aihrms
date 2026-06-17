@@ -5,8 +5,8 @@ type Action = { label: string; href: string; icon?: "arrow" | "play" };
 interface Props {
   title: string;
   description: string;
-  primary: Action;
-  secondary: Action;
+  primary?: Action;
+  secondary?: Action;
 }
 
 export default function CTABanner({ title, description, primary, secondary }: Props) {
@@ -49,10 +49,12 @@ export default function CTABanner({ title, description, primary, secondary }: Pr
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 lg:shrink-0">
-          <CTAButton action={primary} variant="primary" />
-          <CTAButton action={secondary} variant="ghost" />
-        </div>
+        {(primary || secondary) && (
+          <div className="flex flex-col sm:flex-row gap-3 lg:shrink-0">
+            {primary && <CTAButton action={primary} variant="primary" />}
+            {secondary && <CTAButton action={secondary} variant="ghost" />}
+          </div>
+        )}
       </div>
     </section>
   );

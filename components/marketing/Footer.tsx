@@ -4,7 +4,6 @@ const LEGAL_LINKS = [
   { href: "/privacy",  title: "Privacy Policy" },
   { href: "/terms",    title: "Terms of Service" },
   { href: "/security", title: "Security" },
-  { href: "/refunds",  title: "Refund Policy" },
   { href: "/contact",  title: "Contact Us" },
 ];
 
@@ -36,7 +35,7 @@ export default function Footer() {
         </nav>
 
         <div className="text-[13px] text-ink-500">
-          © 2024 AI HRMS. All rights reserved.
+          © 2026 HireMind. All rights reserved.
         </div>
       </div>
     </footer>

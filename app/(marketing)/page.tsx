@@ -3,7 +3,7 @@ import Link from "next/link";
 const STATS = [
   { value: "2M+",   label: "Candidates Processed", caption: "Across Platform" },
   { value: "50K+",  label: "Active Recruiters",    caption: "Trusted by professionals" },
-  { value: "10K+",  label: "Hiring Agencies",      caption: "Growing with AI HRMS" },
+  { value: "10K+",  label: "Hiring Agencies",      caption: "Growing with HireMind" },
   { value: "500K+", label: "Jobs Posted",          caption: "Every Month" },
   { value: "98%",   label: "Matching Accuracy",    caption: "AI-Powered Precision" },
 ];
@@ -22,7 +22,7 @@ export default function Home() {
               Faster with <span className="gradient-text">AI</span>
             </h1>
             <p className="mt-6 text-ink-500 text-[15px] lg:text-[16px] max-w-[480px] leading-[1.7]">
-              AI HRMS helps recruiters, agencies, and employers automate hiring
+              HireMind helps recruiters, agencies, and employers automate hiring
               with intelligent candidate matching, resume analysis, screening
               automation, and hiring insights.
             </p>
@@ -76,7 +76,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="h-16 lg:h-24" />
+      <div className="h-8 lg:h-12" />
     </>
   );
 }
@@ -128,9 +128,6 @@ function CandidateCard() {
         <CircularScore value={98} />
         <div className="text-[11px] text-green-600 font-semibold -mt-1">Excellent Match</div>
       </div>
-      <Link href="/candidate/sarah" className="mt-5 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-[12.5px] font-semibold shadow-sm hover:opacity-95 transition" style={{ background: "var(--gradient-brand)" }}>
-        View Candidate Profile <ArrowIcon size={12} />
-      </Link>
     </div>
   );
 }

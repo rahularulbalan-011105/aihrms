@@ -8,7 +8,8 @@ const NAV_ITEMS = [
   { href: "/profile",            sectionId: "profile-overview",   label: "Overview"                },
   { href: "/profile/experience", sectionId: "profile-experience", label: "Experience"              },
   { href: "/profile/education",  sectionId: "profile-education",  label: "Education"               },
-  { href: "/profile/skills",     sectionId: "profile-skills",     label: "Skills & Certifications" },
+  { href: "/profile/certifications", sectionId: "profile-certifications", label: "Certifications" },
+  { href: "/profile/skills",         sectionId: "profile-skills",         label: "Skills"         },
 ];
 
 const RING_R = 22;
@@ -90,7 +91,7 @@ export default function ProfileLeftPanel({
   const { text: strengthText, color: strengthColor } = strengthLabel(strength);
 
   return (
-    <aside className="w-[260px] shrink-0 sticky top-0 self-start h-[calc(100vh-80px)] bg-white border-r border-ink-200 flex flex-col overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <aside className="w-[260px] shrink-0 sticky top-0 self-start bg-white border-r border-ink-200 flex flex-col">
 
       {/* Back link */}
       <div className="px-5 pt-4 pb-3 shrink-0">

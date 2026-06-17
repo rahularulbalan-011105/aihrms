@@ -26,7 +26,6 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
   function validate(): boolean {
     const next: FieldErrors = {};
     if (!d.title.trim())             next.title = "Job title is required";
-    if (!d.roleCategory)             next.roleCategory = "Role / category is required";
     if (!d.workplaceLocation.trim()) next.workplaceLocation = "Workplace location is required";
     if (!d.description.trim())       next.description = "Job description is required";
     setErrors(next);
@@ -41,15 +40,11 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
     <div className="max-w-[1400px] mx-auto">
       {/* Header strip */}
       <div className="flex items-start justify-between gap-4 mb-4">
-        <button onClick={onCancel} className="px-3.5 py-2 rounded-lg border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-1.5">
-          <ArrowLeft /> Back to Jobs
-        </button>
         <div className="text-center flex-1">
           <h1 className="font-display text-[22px] font-extrabold">Post a New Job</h1>
           <p className="text-ink-500 text-[12.5px]">Fill in the details to attract the right candidates.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save Draft</button>
           <button onClick={handleContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
             Next: Requirements <ArrowRight />
           </button>
@@ -66,7 +61,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
             <Header icon={<BriefIcon />} title="Job Details" subtitle="Provide the basic information about the job role." />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="Job Title" required value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. Senior Software Engineer" error={errors.title} />
-              <Select label="Job Role / Category" required value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} error={errors.roleCategory} />
+              <Select label="Job Role / Category (Optional)" value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} />
               <Select label="Department" value={d.department} onChange={(v) => set("department", v)} placeholder="Select department" options={["Engineering", "Product", "Design", "Sales", "Marketing", "HR"]} />
             </div>
 
@@ -74,7 +69,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
               <div>
                 <Label required>Employment Type</Label>
                 <div className="flex flex-wrap gap-2">
-                  {["Full-time", "Part-time", "Contract", "Internship", "Freelance"].map((t) => (
+                  {["Full-time", "Part-time", "Contract", "Internship"].map((t) => (
                     <Pill key={t} active={d.employmentType === t} onClick={() => set("employmentType", t)}>{t}</Pill>
                   ))}
                 </div>
@@ -89,8 +84,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Select label="Work Location" required value={d.workLocationType} onChange={(v) => set("workLocationType", v)} placeholder="Select location type" options={["Single Location", "Multiple Locations", "Anywhere"]} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Field label="Workplace / Office Location" required value={d.workplaceLocation} onChange={(v) => set("workplaceLocation", v)} placeholder="Enter city, state or country" error={errors.workplaceLocation} />
               <DateField label="Proposed Starting Date" required value={d.startingDate} onChange={(v) => set("startingDate", v)} />
             </div>
@@ -157,28 +151,18 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
                 </div>
               </div>
             </div>
-
-            <div className="mt-4 flex items-center gap-2 text-[12.5px]">
-              <input type="checkbox" checked={d.showApplicationCount} onChange={(e) => set("showApplicationCount", e.target.checked)} className="accent-brand-600" />
-              Show application count to other users
-            </div>
           </Card>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex items-center pt-4">
             <button onClick={onCancel} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Cancel</button>
-            <div className="flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save as Draft</button>
-              <button onClick={handleContinue} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
-                Next: Requirements <ArrowRight />
-              </button>
-            </div>
           </div>
         </div>
 
         <RightRail
           current={1}
           data={data}
+          showJobSummary={false}
           tips={{
             title: "Tips for a great job post",
             tips: ["Use a clear and specific job title", "Add key skills and experience", "Mention salary range (recommended)", "Highlight growth and benefits", "Keep the description concise and easy to read"],
@@ -272,8 +256,6 @@ function RichTextStub() {
 function BriefIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="1.6"/></svg>); }
 function DocIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 2h8l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="1.6"/><path d="M9 12h6M9 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>); }
 function ArrowRight() { return (<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L8 3m5 5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>); }
-function ArrowLeft() { return (<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 8H3m0 0l5-5m-5 5l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>); }
-function DraftIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>); }
 function CalIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>); }
 function SparkIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>); }
 function Info() { return (<svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="inline ml-0.5"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/><path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>); }

@@ -16,11 +16,13 @@ interface Props {
 /** { label: "Full Time", enumName: "FULL_TIME" } */
 interface EmpTypeOption { label: string; enumName: string; }
 
-// Fallback built from hardcoded constants
-const FALLBACK_EMP_OPTIONS: EmpTypeOption[] = EMPLOYMENT_TYPES.map((label) => ({
-  label,
-  enumName: EMPLOYMENT_TYPE_MAP[label] ?? label.toUpperCase().replace(/ /g, "_"),
-}));
+// Fallback built from hardcoded constants (Freelance excluded)
+const FALLBACK_EMP_OPTIONS: EmpTypeOption[] = EMPLOYMENT_TYPES
+  .map((label) => ({
+    label,
+    enumName: EMPLOYMENT_TYPE_MAP[label] ?? label.toUpperCase().replace(/ /g, "_"),
+  }))
+  .filter((o) => o.enumName !== "FREELANCE");
 
 export default function PreferencesSection({ data, onChange }: Props) {
   const [pref, setPref]         = useState<PreferencesData>(data);
@@ -31,7 +33,9 @@ export default function PreferencesSection({ data, onChange }: Props) {
     fetchEmploymentTypes()
       .then((items) => {
         if (!items.length) return;
-        setEmpOptions(items.map((i) => ({ label: toLabel(i.name), enumName: i.name })));
+        setEmpOptions(items
+          .filter((i) => i.name !== "FREELANCE")
+          .map((i) => ({ label: toLabel(i.name), enumName: i.name })));
       })
       .catch(() => { /* keep fallback */ });
   }, []);

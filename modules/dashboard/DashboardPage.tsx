@@ -20,7 +20,7 @@ const STATS = [
     ),
   },
   {
-    label: "Application Status", value: "12", sub: "Applied",
+    label: "Application Status", value: "12", sub: "Applied", href: "/applications",
     iconBg: "bg-blue-50",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +104,7 @@ export default function DashboardPage() {
         {/* Stats grid */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {STATS.map((stat) => (
-            <StatCard key={stat.label} label={stat.label} value={stat.value} sub={stat.sub} icon={stat.icon} iconBg={stat.iconBg} />
+            <StatCard key={stat.label} label={stat.label} value={stat.value} sub={stat.sub} icon={stat.icon} iconBg={stat.iconBg} href={"href" in stat ? stat.href : undefined} />
           ))}
         </div>
 

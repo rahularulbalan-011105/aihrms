@@ -89,21 +89,13 @@ function CandidateIllustration() {
       <div className="absolute inset-x-6 top-8 bottom-0 rounded-full bg-[#C4B5FD]/30 z-0" />
       {/* character */}
       <Image
-        src="/images/candidate.png"
+        src="/images/create-candidate.png"
         alt="Candidate"
         fill
         sizes="(max-width: 768px) 50vw, 25vw"
         className="object-contain object-bottom z-[1]"
         priority
       />
-      {/* chips — over image */}
-      <div className="absolute top-[38%] left-2 bg-white rounded-xl shadow-md px-2.5 py-1.5 z-20">
-        <div className="text-[9px] font-semibold text-ink-700">Job Match</div>
-        <div className="text-yellow-500 text-[9.5px] tracking-widest mt-0.5">★★★★☆</div>
-      </div>
-      <div className="absolute top-[55%] right-1 bg-white rounded-xl shadow-md px-2.5 py-1.5 z-20">
-        <div className="text-[9px] font-semibold text-brand-600">🔔 New Jobs</div>
-      </div>
     </>
   );
 }
@@ -125,11 +117,15 @@ function CompanyIllustration() {
       {/* chips */}
       <div className="absolute top-[38%] left-2 bg-white rounded-xl shadow-md px-2.5 py-2 z-20 flex flex-col items-center">
         <div className="text-[9px] font-semibold text-ink-700">AI Match</div>
-        <div className="text-brand-600 font-extrabold text-[15px] leading-none mt-0.5">95%</div>
+        <div className="text-brand-600 font-extrabold text-[15px] leading-none mt-0.5">
+          95%
+        </div>
       </div>
       <div className="absolute top-[55%] right-1 bg-white rounded-xl shadow-md px-2.5 py-1.5 z-20 flex flex-col items-center">
         <div className="text-[9px] font-semibold text-ink-700">Shortlisted</div>
-        <div className="text-brand-600 font-bold text-[11px] mt-0.5">👥 125</div>
+        <div className="text-brand-600 font-bold text-[11px] mt-0.5">
+          👥 125
+        </div>
       </div>
     </>
   );

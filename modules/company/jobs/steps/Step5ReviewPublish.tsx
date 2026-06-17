@@ -8,7 +8,7 @@ import type { JobDraft } from "../shared/types";
 interface Props {
   data: JobDraft;
   onBack: () => void;
-  onEdit: (step: 1 | 2 | 3 | 4) => void;
+  onEdit: (step: 1 | 2 | 3) => void;
   onPublish: () => void;
   onSaveDraft?: () => void;
   publishing?: boolean;
@@ -24,7 +24,7 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
     <div className="max-w-[1400px] mx-auto">
       <div className="flex items-start justify-between gap-4 mb-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-lg border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-1.5">
-          <ArrowLeft /> Back to Preferences
+          <ArrowLeft /> Back
         </button>
         <div className="text-center flex-1">
           <h1 className="font-display text-[22px] font-extrabold">Post a New Job</h1>
@@ -38,12 +38,12 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
           <button onClick={onPublish} disabled={!confirm || busy}
             className={`px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2 ${confirm && !busy ? "" : "opacity-50 cursor-not-allowed"}`}
             style={{ background: "var(--gradient-brand)" }}>
-            {publishing ? "Publishing…" : "Publish Job"} <PaperPlane />
+            {publishing ? "Submitting…" : "Submit Job"} <PaperPlane />
           </button>
         </div>
       </div>
 
-      <div className="mb-6"><JobStepper current={5} /></div>
+      <div className="mb-6"><JobStepper current={4} /></div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
         <div className="space-y-4">
@@ -91,17 +91,6 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
             </div>
           </SectionCard>
 
-          {/* Preferences */}
-          <SectionCard icon={<SlidersIcon />} title="Preferences" onEdit={() => onEdit(4)}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
-              <Field label="Work Mode"         value={data.preferences.workArrangement} />
-              <Field label="Notice Period"     value={data.preferences.noticePeriods.join(", ") || "—"} />
-              <Field label="Willing to Relocate" value="No" />
-              <Field label="Remote Work Policy" value={data.preferences.workArrangement === "Remote" ? "Fully remote" : "Open to remote candidates"} />
-              <Field label="Availability / Earliest Joining" value="01 Jul 2024" />
-            </div>
-          </SectionCard>
-
           {/* Publish error */}
           {publishError && (
             <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-[12.5px] text-red-700">
@@ -119,26 +108,15 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
           </div>
 
           {/* Bottom buttons */}
-          <div className="flex items-center justify-between pt-3">
+          <div className="flex items-center pt-3">
             <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2">
-              <ArrowLeft /> Previous: Preferences
+              <ArrowLeft /> Back
             </button>
-            <div className="flex items-center gap-3">
-              <button onClick={onSaveDraft} disabled={busy}
-                className={`px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition ${busy ? "opacity-50 cursor-not-allowed" : ""}`}>
-                {savingDraft ? "Saving…" : "Save as Draft"}
-              </button>
-              <button onClick={onPublish} disabled={!confirm || busy}
-                className={`px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2 ${confirm && !busy ? "" : "opacity-50 cursor-not-allowed"}`}
-                style={{ background: "var(--gradient-brand)" }}>
-                {publishing ? "Publishing…" : "Publish Job"} <PaperPlane />
-              </button>
-            </div>
           </div>
         </div>
 
         <RightRail
-          current={5}
+          current={4}
           data={data}
           tips={{
             title: "Tips for a great job post",

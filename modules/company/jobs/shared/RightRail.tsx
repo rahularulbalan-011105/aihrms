@@ -5,20 +5,21 @@ interface Props {
   data: JobDraft;
   tips?: { title: string; tips: string[] };
   showJobSummary?: boolean;
+  showProgress?: boolean;
 }
 
 const STEPS = [
   { n: 1, label: "Job Details" },
   { n: 2, label: "Requirements" },
   { n: 3, label: "Compensation" },
-  { n: 4, label: "Preferences" },
-  { n: 5, label: "Review & Publish" },
+  { n: 4, label: "Review & Publish" },
 ] as const;
 
-export default function RightRail({ current, data, tips, showJobSummary = true }: Props) {
+export default function RightRail({ current, data, tips, showJobSummary = true, showProgress = true }: Props) {
   return (
     <aside className="w-[280px] shrink-0 flex flex-col gap-3">
       {/* Job Posting Progress */}
+      {showProgress && (
       <div className="rounded-xl border border-ink-100 p-4 bg-white">
         <h3 className="font-display font-bold text-[14px] mb-3">Job Posting Progress</h3>
         <ul className="space-y-2.5">
@@ -42,6 +43,7 @@ export default function RightRail({ current, data, tips, showJobSummary = true }
           })}
         </ul>
       </div>
+      )}
 
       {/* Tips */}
       {tips && (
@@ -54,7 +56,6 @@ export default function RightRail({ current, data, tips, showJobSummary = true }
               </li>
             ))}
           </ul>
-          <a className="mt-2 inline-flex items-center gap-1 text-[12px] text-brand-700 font-semibold">View full guide →</a>
         </div>
       )}
 

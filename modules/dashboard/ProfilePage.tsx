@@ -7,6 +7,7 @@ import {
   type WorkExperienceProfile,
   type EducationProfile,
   type SkillProfile,
+  type CertificationProfile,
 } from "@/modules/auth/services/candidate.service";
 import ProfileLeftPanel    from "./components/profile/ProfileLeftPanel";
 import ProfileOverviewCard from "./components/profile/ProfileOverviewCard";
@@ -42,7 +43,6 @@ function ProfessionalSummary({ text }: { text: string | null }) {
 }
 
 function ExperienceSection({ experiences, highlighted }: { experiences: WorkExperienceProfile[]; highlighted?: boolean }) {
-  if (!experiences.length) return null;
   return (
     <div className="card p-5">
       <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
@@ -53,6 +53,10 @@ function ExperienceSection({ experiences, highlighted }: { experiences: WorkExpe
         </div>
         <h2 className={`font-display font-bold text-[15px] transition-colors duration-500 ${highlighted ? "text-brand-600" : "text-ink-900"}`}>Experience</h2>
       </div>
+
+      {!experiences.length && (
+        <p className="text-[13px] text-ink-400">No experience added yet.</p>
+      )}
 
       <div className="space-y-5">
         {experiences.map(exp => (
@@ -134,11 +138,50 @@ function EducationSection({ educations, highlighted }: { educations: EducationPr
   );
 }
 
+function CertificationsSection({ certifications, highlighted }: { certifications: CertificationProfile[]; highlighted?: boolean }) {
+  return (
+    <div className="card p-5">
+      <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
+        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="6" /><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12" />
+          </svg>
+        </div>
+        <h2 className={`font-display font-bold text-[15px] transition-colors duration-500 ${highlighted ? "text-brand-600" : "text-ink-900"}`}>Certifications</h2>
+      </div>
+
+      {!certifications.length && (
+        <p className="text-[13px] text-ink-400">No certifications added yet.</p>
+      )}
+
+      <div className="space-y-3">
+        {certifications.map(cert => (
+          <div key={cert.id} className="flex items-center gap-3 p-3 rounded-xl border border-ink-100 hover:border-brand-200 hover:bg-brand-50/20 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-ink-100 flex items-center justify-center text-[18px] shrink-0">📜</div>
+            <div>
+              <div className="font-semibold text-[13.5px] text-ink-900">{cert.certificationName}</div>
+              <div className="text-[12.5px] text-brand-600 font-medium">{cert.issuingInstitution}</div>
+              <div className="text-[12px] text-ink-400 mt-0.5">
+                {[
+                  cert.passedYear ? `Issued ${cert.passedYear}` : null,
+                  cert.doesNotExpire ? "No Expiry" : cert.validTill ? `Valid till ${cert.validTill}` : null,
+                ].filter(Boolean).join(" • ")}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TopSkillsSection({ skills, highlighted }: { skills: SkillProfile[]; highlighted?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   if (!skills.length) return null;
   const topSkills = skills.filter(s => s.topSkill).length ? skills.filter(s => s.topSkill) : skills;
-  const displayed = topSkills.slice(0, 12);
-  const extra = skills.length - displayed.length;
+  const collapsed = topSkills.slice(0, 12);
+  const extra = skills.length - collapsed.length;
+  const displayed = expanded ? skills : collapsed;
   return (
     <div className="card p-5">
       <div className={`flex items-center gap-2.5 mb-4 -mx-2 px-2 py-1 rounded-lg transition-colors duration-500 ${highlighted ? "bg-brand-50" : ""}`}>
@@ -156,9 +199,13 @@ function TopSkillsSection({ skills, highlighted }: { skills: SkillProfile[]; hig
           </span>
         ))}
         {extra > 0 && (
-          <span className="px-3 py-1.5 rounded-full border border-ink-200 text-[12.5px] text-ink-500 bg-white cursor-default">
-            +{extra} more
-          </span>
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            className="px-3 py-1.5 rounded-full border border-ink-200 text-[12.5px] font-medium text-brand-600 bg-white hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-pointer"
+          >
+            {expanded ? "Show less" : `+${extra} more`}
+          </button>
         )}
       </div>
     </div>
@@ -272,6 +319,12 @@ export default function ProfilePage() {
               <EducationSection
                 educations={fullProfile?.educations ?? []}
                 highlighted={highlightedSection === "profile-education"}
+              />
+            </div>
+            <div id="profile-certifications">
+              <CertificationsSection
+                certifications={fullProfile?.certifications ?? []}
+                highlighted={highlightedSection === "profile-certifications"}
               />
             </div>
             <div id="profile-skills">

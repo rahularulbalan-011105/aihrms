@@ -10,6 +10,12 @@ export function MailIcon() {
 export function LockIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 }
+export function EyeIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/></svg>;
+}
+export function EyeOffIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18M10 10a3 3 0 0 0 4 4M9 5a10 10 0 0 1 13 7 12 12 0 0 1-3 4M6 7C3 9 2 12 2 12s4 7 10 7c1.5 0 3-.4 4-1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
+}
 export function LocationIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z" stroke="currentColor" strokeWidth="1.6"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6"/></svg>;
 }

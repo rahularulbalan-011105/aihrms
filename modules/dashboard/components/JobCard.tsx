@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export interface Job {
   id: string;
   title: string;
@@ -54,11 +56,11 @@ export default function JobCard({ job }: { job: Job }) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] text-ink-400">{job.postedAt}</span>
-            <button className="text-ink-300 hover:text-brand-500 transition-colors" aria-label="Save job">
+            <Link href="/saved-jobs" className="text-ink-300 hover:text-brand-500 transition-colors" aria-label="Save job">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
               </svg>
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -118,6 +120,9 @@ export default function JobCard({ job }: { job: Job }) {
         )}
         <button className="mt-1 text-[12px] font-semibold text-brand-600 border border-brand-300 px-3 py-1.5 rounded-xl hover:bg-brand-50 transition-colors whitespace-nowrap">
           View Details
+        </button>
+        <button className="text-[12px] font-semibold text-white px-3 py-1.5 rounded-xl hover:opacity-95 transition-opacity whitespace-nowrap" style={{ background: "var(--gradient-brand)" }}>
+          Apply Job
         </button>
       </div>
     </div>

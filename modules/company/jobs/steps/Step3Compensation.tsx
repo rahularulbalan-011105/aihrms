@@ -13,19 +13,6 @@ interface Props {
 const SALARY_TYPES = [
   { key: "Fixed CTC",    icon: <RupeeIcon /> },
   { key: "Salary Range", icon: <BarsIcon /> },
-  { key: "Pay Range",    icon: <RupeeIcon /> },
-  { key: "Negotiable",   icon: <HandshakeIcon /> },
-] as const;
-
-const BENEFITS = [
-  { key: "Health Insurance",      icon: <HeartIcon /> },
-  { key: "Provident Fund (PF)",   icon: <PiggyIcon /> },
-  { key: "Gratuity",              icon: <BadgeIcon /> },
-  { key: "Performance Bonus",     icon: <StarIcon /> },
-  { key: "ESOPs",                 icon: <CoinIcon /> },
-  { key: "Transport Allowance",   icon: <CarIcon /> },
-  { key: "Meal Allowance",        icon: <FoodIcon /> },
-  { key: "Other Benefits (Custom)", icon: <PlusIcon /> },
 ] as const;
 
 export default function Step3Compensation({ data, onChange, onBack, onContinue }: Props) {
@@ -33,23 +20,19 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
   const set = <K extends keyof CompensationData>(k: K, v: CompensationData[K]) =>
     onChange({ ...data, compensation: { ...c, [k]: v } });
 
-  const toggleBenefit = (b: string) =>
-    set("benefits", c.benefits.includes(b) ? c.benefits.filter((x) => x !== b) : [...c.benefits, b]);
-
   return (
     <div className="max-w-[1400px] mx-auto">
       <div className="flex items-start justify-between gap-4 mb-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-lg border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-1.5">
-          <ArrowLeft /> Back to Requirements
+          <ArrowLeft /> Back
         </button>
         <div className="text-center flex-1">
           <h1 className="font-display text-[22px] font-extrabold">Post a New Job</h1>
           <p className="text-ink-500 text-[12.5px]">Define the compensation and benefits for this role.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save as Draft</button>
           <button onClick={onContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
-            Next: Preferences <ArrowRight />
+            Next: Review <ArrowRight />
           </button>
         </div>
       </div>
@@ -67,7 +50,7 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
               <div>
                 <Label required>Salary Type</Label>
                 <p className="text-[11.5px] text-ink-500 mb-2">How do you want to structure the compensation?</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {SALARY_TYPES.map((t) => (
                     <button key={t.key} onClick={() => set("salaryType", t.key)}
                       className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md border text-[12.5px] font-semibold transition ${
@@ -87,11 +70,28 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
             </div>
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-end">
-              <div>
-                <Label required>Annual CTC</Label>
-                <p className="text-[11.5px] text-ink-500 mb-2">Enter the total annual cost to company</p>
-                <RupeeInput value={c.annualCtc} onChange={(v) => set("annualCtc", v)} />
-              </div>
+              {c.salaryType === "Salary Range" ? (
+                <div>
+                  <Label required>Salary Range</Label>
+                  <p className="text-[11.5px] text-ink-500 mb-2">Enter the minimum and maximum annual salary</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="block text-[11px] text-ink-500 mb-1">Min</span>
+                      <RupeeInput value={c.salaryMin} onChange={(v) => set("salaryMin", v)} />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-ink-500 mb-1">Max</span>
+                      <RupeeInput value={c.salaryMax} onChange={(v) => set("salaryMax", v)} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label required>Annual CTC</Label>
+                  <p className="text-[11.5px] text-ink-500 mb-2">Enter the total annual cost to company</p>
+                  <RupeeInput value={c.annualCtc} onChange={(v) => set("annualCtc", v)} />
+                </div>
+              )}
               <div className="bg-ink-100/40 border border-ink-100 rounded-lg p-3 flex items-center gap-6">
                 <div className="flex-1">
                   <div className="text-[11.5px] text-ink-500 mb-0.5">Fixed Pay</div>
@@ -124,47 +124,10 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
             </div>
           </Card>
 
-          {/* Additional Benefits */}
-          <Card>
-            <div className="mb-4">
-              <h2 className="font-display text-[16px] font-extrabold">Additional Benefits <span className="text-[11.5px] font-normal text-ink-500">(Optional)</span></h2>
-              <p className="text-ink-500 text-[12.5px]">Select any additional benefits applicable for this role.</p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
-              {BENEFITS.map((b) => {
-                const active = c.benefits.includes(b.key);
-                return (
-                  <button key={b.key} onClick={() => toggleBenefit(b.key)}
-                    className={`flex flex-col items-center justify-center gap-2 px-2 py-3.5 rounded-lg border text-center transition ${
-                      active ? "border-brand-500 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-700 hover:border-ink-300"
-                    }`}>
-                    <span className={`w-9 h-9 rounded-md flex items-center justify-center ${active ? "bg-brand-100" : "bg-ink-100/60"}`}>{b.icon}</span>
-                    <span className="text-[11px] font-semibold leading-tight">{b.key}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4">
-              <Label>Other Benefits (Custom)</Label>
-              <textarea value={c.otherBenefits} onChange={(e) => set("otherBenefits", e.target.value)}
-                placeholder="Enter other benefits (e.g., Mobile allowance, Internet allowance)"
-                maxLength={200}
-                className="w-full min-h-[80px] p-3 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-300 resize-y placeholder:text-ink-400" />
-              <div className="text-right text-[11px] text-ink-400">{c.otherBenefits.length}/200</div>
-            </div>
-          </Card>
-
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex items-center pt-4">
             <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2">
-              <ArrowLeft /> Back to Requirements
+              <ArrowLeft /> Back
             </button>
-            <div className="flex items-center gap-3">
-              <button className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><DraftIcon /> Save as Draft</button>
-              <button onClick={onContinue} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
-                Next: Preferences <ArrowRight />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -206,9 +169,6 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
                 <li key={t} className="flex items-start gap-2 text-[12px] text-ink-700"><span className="mt-1 text-green-600">✓</span><span>{t}</span></li>
               ))}
             </ul>
-            <button className="mt-2.5 w-full px-3 py-2 rounded-md border border-brand-300 text-brand-700 text-[12px] font-semibold hover:bg-brand-50 transition inline-flex items-center justify-center gap-1">
-              View Market Insights <ArrowRight />
-            </button>
           </div>
         </aside>
       </div>

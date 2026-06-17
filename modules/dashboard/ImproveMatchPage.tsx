@@ -277,7 +277,7 @@ export default function ImproveMatchPage() {
           </svg>
           Back to Dashboard
         </Link>
-        <h1 className="font-display font-extrabold text-[24px] text-ink-900 flex items-center gap-2">
+        <h1 className="font-display font-extrabold text-[22px] text-ink-900 flex items-center gap-2">
           Improve Your Match
           <svg
             width="22"

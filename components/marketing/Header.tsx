@@ -10,8 +10,6 @@ const NAV = [
   { href: "/ai-capabilities", title: "AI Capabilities" },
   { href: "/pricing",         title: "Pricing" },
   { href: "/integrations",    title: "Integrations" },
-  { href: "/case-studies",    title: "Case Studies" },
-  { href: "/blog",            title: "Blog" },
   { href: "/faq",             title: "FAQ" },
 ];
 
@@ -21,7 +19,7 @@ export default function Header() {
     href === "/" ? pathname === "/" : pathname?.startsWith(href);
 
   return (
-    <header className="bg-white border-b border-ink-100 min-h-[72px]">
+    <header className="sticky top-0 z-50 bg-white border-b border-ink-100 shadow-sm min-h-[72px]">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10 h-[72px] flex items-center gap-6">
         <Link href="/" className="shrink-0 flex items-center">
           <BrandLogo size="md" />
