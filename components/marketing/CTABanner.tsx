@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowIcon, PlayIcon } from "./icons";
 
 type Action = { label: string; href: string; icon?: "arrow" | "play" };
 
@@ -71,17 +72,8 @@ function CTAButton({ action, variant }: { action: Action; variant: "primary" | "
       className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-[14px] font-semibold transition ${classes}`}
     >
       {action.label}
-      {action.icon === "arrow" && (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8h10m0 0L8 3m5 5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-      {action.icon === "play" && (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M6.5 5.5l4 2.5-4 2.5v-5z" fill="currentColor" />
-        </svg>
-      )}
+      {action.icon === "arrow" && <ArrowIcon />}
+      {action.icon === "play" && <PlayIcon />}
     </Link>
   );
 }

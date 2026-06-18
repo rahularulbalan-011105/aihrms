@@ -3,102 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CTABanner from "@/components/marketing/CTABanner";
-
-type Category =
-  | "all"
-  | "general"
-  | "seekers"
-  | "agencies"
-  | "security"
-  | "pricing"
-  | "integrations"
-  | "technical";
-type Q = { q: string; a: string; cat: Exclude<Category, "all"> };
-
-const QUESTIONS: Q[] = [
-  {
-    q: "What is HireMind?",
-    a: "HireMind is an AI-powered recruitment platform that helps job seekers find the right opportunities and helps agencies streamline hiring with AI-driven matching, automation, and insights.",
-    cat: "general",
-  },
-  {
-    q: "How does AI matching work?",
-    a: "Our AI analyzes resumes, job descriptions, skills, experience, and intent — then ranks candidates by relevance using semantic similarity and contextual signals, not just keyword overlap.",
-    cat: "general",
-  },
-  {
-    q: "Is HireMind suitable for both job seekers and recruitment agencies?",
-    a: "Yes. Job seekers get smart matching, auto-apply, and fake-job detection. Agencies get bulk parsing, semantic candidate search, screening automation, and hiring analytics — all from the same platform.",
-    cat: "general",
-  },
-  {
-    q: "Can I try HireMind before subscribing?",
-    a: "Absolutely — every plan includes a free trial. You can also book a live demo with our team to see how HireMind fits your hiring workflow before you commit.",
-    cat: "pricing",
-  },
-  {
-    q: "How secure is my data on HireMind?",
-    a: "We use bank-grade encryption (in transit and at rest), role-based access controls, regular security audits, and store your data in compliant regional data centers. Sensitive resume data is never shared with third parties.",
-    cat: "security",
-  },
-  {
-    q: "What integrations does HireMind support?",
-    a: "HireMind integrates with leading job boards, ATS systems, calendar tools, and communication platforms. Custom integrations are available on Business and Enterprise plans.",
-    cat: "integrations",
-  },
-  {
-    q: "How does pricing and billing work?",
-    a: "Plans are billed annually for the best rate, with monthly options on the Professional tier and above. Enterprise pricing is custom and tailored to your team size, volume, and integration needs.",
-    cat: "pricing",
-  },
-  {
-    q: "Can job seekers create alerts for specific roles?",
-    a: "Yes — set keyword, location, and salary filters; HireMind surfaces matching roles in real time.",
-    cat: "seekers",
-  },
-  {
-    q: "Do you support resume builder for job seekers?",
-    a: "Yes, with AI-assisted suggestions that align your profile to roles you're targeting.",
-    cat: "seekers",
-  },
-  {
-    q: "How do agencies manage team permissions?",
-    a: "Granular roles let you scope users to specific jobs, candidates, or analytics views.",
-    cat: "agencies",
-  },
-  {
-    q: "Is my data deletable on request?",
-    a: "Yes — you can request full deletion of your account and associated data at any time.",
-    cat: "security",
-  },
-  {
-    q: "Do you provide an API?",
-    a: "Yes — API access is included on Business and Enterprise plans.",
-    cat: "technical",
-  },
-];
-
-const CATEGORIES: { id: Category; title: string; icon: string }[] = [
-  { id: "all", title: "All Questions", icon: "▦" },
-  { id: "general", title: "General", icon: "ⓘ" },
-  { id: "seekers", title: "For Job Seekers", icon: "👤" },
-  { id: "agencies", title: "For Agencies / Recruiters", icon: "👥" },
-  { id: "security", title: "Security & Privacy", icon: "🛡" },
-  { id: "pricing", title: "Pricing & Billing", icon: "💳" },
-  { id: "integrations", title: "Integrations", icon: "⚙" },
-  { id: "technical", title: "Technical", icon: "✦" },
-];
-
-const COUNTS: Record<Category, number> = {
-  all: 12,
-  general: 3,
-  seekers: 3,
-  agencies: 3,
-  security: 2,
-  pricing: 2,
-  integrations: 2,
-  technical: 1,
-};
+import Pill from "@/components/marketing/Pill";
+import { ArrowIcon } from "@/components/marketing/icons";
+import { QUESTIONS, CATEGORIES, countFor, type Category } from "./faq.data";
 
 export default function FAQPage() {
   const [cat, setCat] = useState<Category>("all");
@@ -120,12 +27,12 @@ export default function FAQPage() {
   return (
     <>
       <section className="page-tint">
-        <div className="mx-auto max-w-[1280px] px-6 lg:px-10 pt-14 lg:pt-20 pb-10 text-center">
-          <Pill>Everything You Need to Know</Pill>
-          <h1 className="mt-5 font-display text-[42px] lg:text-[56px] leading-[1.05] font-extrabold tracking-tight">
+        <div className="mx-auto max-w-[1280px] px-6 lg:px-10 pt-14 lg:pt-20 pb-12 lg:pb-16 text-center">
+          <Pill glyph="ⓘ">Everything You Need to Know</Pill>
+          <h1 className="mt-6 font-display text-[42px] lg:text-[56px] leading-[1.05] font-extrabold tracking-tight">
             Frequently Asked <span className="gradient-text">Questions</span>
           </h1>
-          <p className="mt-5 text-ink-500 text-[15px] max-w-[640px] mx-auto leading-relaxed">
+          <p className="mt-6 text-ink-500 text-[15px] max-w-[640px] mx-auto leading-relaxed">
             Find answers to common questions about HireMind, our features,
             pricing, security, and more.
           </p>
@@ -177,7 +84,7 @@ export default function FAQPage() {
                       <span
                         className={`text-[11px] font-bold px-2 py-0.5 rounded ${cat === c.id ? "bg-brand-100 text-brand-700" : "bg-ink-100 text-ink-500"}`}
                       >
-                        {COUNTS[c.id]}
+                        {countFor(c.id)}
                       </span>
                     </button>
                   </li>
@@ -266,27 +173,5 @@ export default function FAQPage() {
       />
       <div className="h-16" />
     </>
-  );
-}
-
-function Pill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 text-brand-700 text-[12px] font-semibold border border-brand-100">
-      <span className="text-brand-500">ⓘ</span>
-      {children}
-    </span>
-  );
-}
-function ArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M3 8h10m0 0L8 3m5 5l-5 5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

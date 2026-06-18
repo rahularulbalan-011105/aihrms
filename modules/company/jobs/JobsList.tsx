@@ -212,12 +212,12 @@ function JobRow({ job, demo }: { job: JobApiResponse; demo: (typeof DEMO_META)[n
 
         {/* Actions */}
         <div className="flex flex-row lg:flex-col gap-2 lg:w-[150px] shrink-0">
-          <button className="flex-1 text-[12.5px] font-semibold text-brand-600 border border-brand-300 px-4 py-2 rounded-xl hover:bg-brand-50 transition-colors whitespace-nowrap">
+          <Link href={`/company/jobs/${job.id}/applications`} className="flex-1 text-center text-[12.5px] font-semibold text-brand-600 border border-brand-300 px-4 py-2 rounded-xl hover:bg-brand-50 transition-colors whitespace-nowrap">
             View Applications
-          </button>
-          <button className="flex-1 text-[12.5px] font-semibold text-ink-700 border border-ink-200 px-4 py-2 rounded-xl hover:bg-ink-100 transition-colors whitespace-nowrap">
+          </Link>
+          <Link href={`/company/jobs/${job.id}/edit`} className="flex-1 text-center text-[12.5px] font-semibold text-ink-700 border border-ink-200 px-4 py-2 rounded-xl hover:bg-ink-100 transition-colors whitespace-nowrap">
             Edit Job
-          </button>
+          </Link>
         </div>
       </div>
     </div>

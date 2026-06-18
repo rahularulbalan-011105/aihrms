@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { WrenchIcon, ArrowLeftIcon } from "./icons";
 
 type Variant = "pricing" | "integrations";
 
@@ -86,7 +87,7 @@ export default function ComingSoon({ variant }: { variant: Variant }) {
 
         {/* Back link */}
         <Link href="/" className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-500 hover:text-ink-800 transition-colors">
-          <ArrowLeft /> Back to Home
+          <ArrowLeftIcon /> Back to Home
         </Link>
       </div>
     </section>
@@ -113,12 +114,6 @@ function IntegrationsArt() {
 }
 
 /* ─── Icons ──────────────────────────────────────────────────────────────────── */
-function WrenchIcon() {
-  return (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-.7-.7-2.8 2.5-2.5z" /></svg>);
-}
 function CheckIcon() {
   return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>);
-}
-function ArrowLeft() {
-  return (<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 8H3m0 0l5-5m-5 5l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>);
 }
