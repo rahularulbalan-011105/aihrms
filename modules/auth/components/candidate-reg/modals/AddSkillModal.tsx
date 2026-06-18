@@ -84,7 +84,7 @@ export default function AddSkillModal({ onClose, onSaved, addedSkills, onDeleteS
       if (isEdit && editSkill) {
         await updateCandidateSkill(editSkill.id, payload);
       } else {
-        const backendId = await addCandidateSkill(payload);
+        const backendId = await addCandidateSkill(payload, addedSkills.map(s => s.id));
         skill.id = backendId;
       }
       onSaved(skill);

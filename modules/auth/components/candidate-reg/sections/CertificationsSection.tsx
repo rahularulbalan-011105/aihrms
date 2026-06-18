@@ -36,6 +36,7 @@ export default function CertificationsSection({ certifications, onChange }: Prop
       )}
       {certModal.open && (
         <AddCertificationModal
+          existingIds={certifications.map(c => c.id)}
           onClose={() => setCertModal({ open: false })}
           onSaved={cert => {
             onChange(certModal.editCert

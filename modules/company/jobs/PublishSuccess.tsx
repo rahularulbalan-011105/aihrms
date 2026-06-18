@@ -1,31 +1,48 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { getStoredCompanyName } from "@/lib/api/config";
+import { fetchJob, type JobDetail } from "./services/job.service";
 
-export default function PublishSuccess() {
+const DASH = "—";
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return DASH;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return DASH;
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatMoney(amount: number | null | undefined, currency: string | null): string {
+  if (amount == null) return DASH;
+  return `${currency || "₹"} ${amount.toLocaleString("en-IN")} per annum`;
+}
+
+function formatExperience(min: number | null | undefined, max: number | null | undefined): string {
+  if (min == null && max == null) return DASH;
+  if (min != null && max != null) return `${min} – ${max} Years`;
+  return `${min ?? max} Years`;
+}
+
+export default function PublishSuccess({ jobId }: { jobId?: string }) {
+  const [job, setJob] = useState<JobDetail | null>(null);
+  const [companyName, setCompanyName] = useState("");
+
+  useEffect(() => {
+    setCompanyName(getStoredCompanyName() ?? "");
+    if (jobId) fetchJob(jobId).then(setJob).catch(() => {});
+  }, [jobId]);
+
+  const jobHref = jobId ? `/company/jobs/${jobId}/applications` : "/company/jobs";
+  const locationText = job?.workplaceLocation
+    ? `${job.workplaceLocation}${job.workMode ? ` (${job.workMode})` : ""}`
+    : DASH;
+  const openingsText =
+    job?.openings != null ? `${job.openings} Opening${job.openings === 1 ? "" : "s"}` : DASH;
+
   return (
     <div className="px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
-      {/* Top action strip */}
-      <div className="flex items-start justify-between gap-4 mb-5">
-        <Link
-          href="/company/jobs/new"
-          className="px-3.5 py-2 rounded-lg border border-brand-300 text-brand-700 text-[12.5px] font-semibold hover:bg-brand-50 transition inline-flex items-center gap-1.5"
-        >
-          <ArrowLeft /> Back to Preferences
-        </Link>
-        <div className="flex items-center gap-2 shrink-0">
-          <button className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition">
-            Save Draft
-          </button>
-          <button
-            className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            Publish Job <PaperPlane />
-          </button>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
         <div className="space-y-4">
           {/* Hero success */}
@@ -39,12 +56,13 @@ export default function PublishSuccess() {
                 Your job post is now live and visible to candidates.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                <button
+                <Link
+                  href={jobHref}
                   className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2"
                   style={{ background: "var(--gradient-brand)" }}
                 >
                   View Job Post <PaperPlane />
-                </button>
+                </Link>
                 <Link
                   href="/company/dashboard"
                   className="px-4 py-2.5 rounded-lg border border-brand-300 text-brand-700 text-[13px] font-semibold hover:bg-brand-50 transition inline-flex items-center gap-2"
@@ -72,43 +90,49 @@ export default function PublishSuccess() {
               </div>
               <div>
                 <div className="font-display text-[17px] font-extrabold">
-                  Senior Software Engineer
+                  {job?.title ?? DASH}
                 </div>
                 <div className="flex items-center gap-3 text-[12px] text-ink-600 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1">
-                    <BuildingIcon /> Acme Talent Solutions
+                    <BuildingIcon /> {companyName || DASH}
                   </span>
                   <span aria-hidden="true">•</span>
                   <span className="inline-flex items-center gap-1">
-                    <PinIcon /> Bengaluru, Karnataka, India (Hybrid)
+                    <PinIcon /> {locationText}
                   </span>
                   <span aria-hidden="true">•</span>
                   <span className="inline-flex items-center gap-1">
-                    <BriefIcon /> Full-time
+                    <BriefIcon /> {job?.employmentType ?? DASH}
                   </span>
                   <span aria-hidden="true">•</span>
                   <span className="inline-flex items-center gap-1">
-                    <UserIcon /> Opening
+                    <UserIcon /> {openingsText}
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 pt-3 border-t border-ink-100">
-                  <Detail label="Department" value="Engineering" />
+                  <Detail label="Department" value={job?.department ?? DASH} />
                   <Detail
-                    label="Salary Range"
-                    value="₹ 12,00,000 – ₹ 18,00,000 per annum"
+                    label="Salary"
+                    value={formatMoney(job?.annualCtc, job?.currency ?? null)}
                   />
                   <Detail
                     label="Role / Category"
-                    value="Software Development"
+                    value={job?.roleCategory ?? DASH}
                   />
-                  <Detail label="Notice Period" value="15 – 30 Days" />
-                  <Detail label="Experience" value="3 – 6 Years" />
-                  <Detail label="Job ID" value="JOB-2024-0056" />
-                  <Detail label="Posted On" value="20 May 2024" />
+                  <Detail label="Notice Period" value={job?.noticePeriod ?? DASH} />
+                  <Detail
+                    label="Experience"
+                    value={formatExperience(job?.experienceMinYears, job?.experienceMaxYears)}
+                  />
+                  <Detail label="Job ID" value={job?.id ?? DASH} />
+                  <Detail label="Posted On" value={formatDate(job?.publishedAt ?? job?.createdAt)} />
                 </div>
-                <a className="mt-3 inline-flex items-center gap-1 text-[12.5px] text-brand-700 font-semibold">
+                <Link
+                  href={jobHref}
+                  className="mt-3 inline-flex items-center gap-1 text-[12.5px] text-brand-700 font-semibold"
+                >
                   View Full Job Details <ArrowRight />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -553,19 +577,6 @@ function MailIcon() {
         strokeWidth="1.6"
       />
       <path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
-}
-function ArrowLeft() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M13 8H3m0 0l5-5m-5 5l5 5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
     </svg>
   );
 }

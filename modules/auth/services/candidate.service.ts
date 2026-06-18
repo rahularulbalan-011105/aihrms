@@ -105,16 +105,22 @@ export interface SkillProfile {
   skillName: string;
   proficiencyLevel: string;
   experienceYears: number | null;
+  lastUsed: string | null;
   topSkill: boolean;
+  additionalDetails: string | null;
 }
 
 export interface CertificationProfile {
   id: string;
   certificationName: string;
   issuingInstitution: string;
+  credentialId?: string | null;
+  certificateUrl?: string | null;
   passedYear: number | null;
   validTill: string | null;
   doesNotExpire: boolean;
+  description?: string | null;
+  displayOnProfile?: boolean;
   certificateFileKey?: string | null;
 }
 
@@ -284,11 +290,15 @@ export interface SkillPayload {
 }
 
 /** POST /profile/skills → returns backend-assigned skill id */
-export async function addCandidateSkill(payload: SkillPayload): Promise<string> {
+export async function addCandidateSkill(payload: SkillPayload, existingIds: string[] = []): Promise<string> {
   const res = await authedFetch("/profile/skills", { method: "POST", body: JSON.stringify(payload) });
   const profile = await handleResponse<{ skills: { id: string }[] }>(res);
   const list = profile.skills ?? [];
-  return list[list.length - 1]?.id ?? crypto.randomUUID();
+  // Identify the new row by diffing against ids the caller already had — the
+  // response order isn't guaranteed to put the newest skill last.
+  const known = new Set(existingIds);
+  const created = list.find((s) => !known.has(s.id));
+  return created?.id ?? list[list.length - 1]?.id ?? crypto.randomUUID();
 }
 
 /** PUT /profile/skills/:id */
@@ -387,11 +397,15 @@ export interface CertificationPayload {
 }
 
 /** POST /profile/certifications → returns backend-assigned cert id */
-export async function addCertification(payload: CertificationPayload): Promise<string> {
+export async function addCertification(payload: CertificationPayload, existingIds: string[] = []): Promise<string> {
   const res = await authedFetch("/profile/certifications", { method: "POST", body: JSON.stringify(payload) });
   const profile = await handleResponse<{ certifications: { id: string }[] }>(res);
   const list = profile.certifications ?? [];
-  return list[list.length - 1]?.id ?? crypto.randomUUID();
+  // The response is ordered by passedYear (not insertion), so the new row is the
+  // id that wasn't already known to the caller — not necessarily the last item.
+  const known = new Set(existingIds);
+  const created = list.find((c) => !known.has(c.id));
+  return created?.id ?? list[list.length - 1]?.id ?? crypto.randomUUID();
 }
 
 /** PUT /profile/certifications/:id */

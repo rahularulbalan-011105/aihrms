@@ -21,6 +21,27 @@ export interface JobCountsResponse {
   drafts: number;
 }
 
+/** Subset of the backend JobDetailResponse used by the published-success summary. */
+export interface JobDetail {
+  id: string;
+  title: string;
+  roleCategory: string | null;
+  department: string | null;
+  employmentType: string | null;
+  openings: number;
+  workplaceLocation: string | null;
+  workMode: string | null;
+  noticePeriod: string | null;
+  experienceMinYears: number | null;
+  experienceMaxYears: number | null;
+  salaryType: string | null;
+  currency: string | null;
+  annualCtc: number | null;
+  status: string;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
 function jsonHeaders(): HeadersInit {
   return {
     "Content-Type": "application/json",
@@ -156,6 +177,16 @@ export async function listJobs(
     content: (json?.data?.content ?? []) as JobApiResponse[],
     totalElements: (json?.data?.totalElements ?? 0) as number,
   };
+}
+
+/** GET /company/jobs/{id} — full detail for a single job (ownership-guarded). */
+export async function fetchJob(id: string): Promise<JobDetail> {
+  const res = await fetch(`${API.COMPANY}/company/jobs/${id}`, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message ?? `Failed to load job (${res.status})`);
+  return json.data as JobDetail;
 }
 
 /** GET /company/jobs/counts — totals for the dashboard stat card. */

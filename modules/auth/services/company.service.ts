@@ -116,7 +116,10 @@ export async function uploadCompanyLogo(file: File): Promise<string | null> {
 
   if (!res.ok) return null;
   const json = await res.json().catch(() => null);
-  return (json?.data?.logoKey ?? null) as string | null;
+  const data = json?.data;
+  // Cache the presigned URL so CompanyHeader shows the logo immediately.
+  if (data?.logoUrl) setStoredCompanyLogoUrl(data.logoUrl);
+  return (data?.logoFileKey ?? null) as string | null;
 }
 
 /** DELETE /users/me — rollback if downstream company profile creation fails */

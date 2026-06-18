@@ -4,12 +4,15 @@ import { useState } from "react";
 import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
-import { registerCompanyUser, saveCompanyProfile, deleteCurrentCompany } from "@/modules/auth/services/company.service";
+import { registerCompanyUser, saveCompanyProfile, uploadCompanyLogo, deleteCurrentCompany } from "@/modules/auth/services/company.service";
 import { isValidEmail, isStrongPassword } from "@/modules/auth/components/candidate-reg/shared/validators";
 
 interface Props {
   data: AdminData;
   company: CompanyData;
+  /** True once the account has already been created (returning to this step). */
+  registered: boolean;
+  onRegistered: () => void;
   onChange: (d: AdminData) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -22,7 +25,7 @@ const TIMEZONES = ["(GMT +05:30) Asia/Kolkata", "(GMT +00:00) UTC", "(GMT -05:00
 const LANGUAGES = ["English", "Hindi", "Spanish", "French"];
 const NOTIFY_OPTS = ["Receive important updates", "Receive all updates", "Critical only", "None"];
 
-export default function Step2AdminDetails({ data, company, onChange, onBack, onContinue }: Props) {
+export default function Step2AdminDetails({ data, company, registered, onRegistered, onChange, onBack, onContinue }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
@@ -48,8 +51,7 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
     if (!data.email?.trim())      errs.email       = "Required";
     else if (!isValidEmail(data.email)) errs.email = "Enter a valid email address";
     if (!data.mobile?.trim())                                    errs.mobile = "Required";
-    else if (data.mobile.trim().length < 7)                    errs.mobile = "Enter a valid mobile number (min 7 digits)";
-    else if (data.mobile.trim().length > 15)                   errs.mobile = "Mobile number too long (max 15 digits)";
+    else if (data.mobile.trim().length !== 10)                 errs.mobile = "Enter a valid 10-digit mobile number";
     const pwdErr = isStrongPassword(data.password ?? "");
     if (pwdErr)                   errs.password    = pwdErr;
     if (!data.confirmPassword?.trim()) errs.confirmPassword = "Required";
@@ -66,12 +68,25 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
     setIsLoading(true);
     setErrors((prev) => ({ ...prev, api: undefined }));
     try {
-      await registerCompanyUser(data);
-      try {
+      if (!registered) {
+        // First time through: create the account, then the company profile.
+        await registerCompanyUser(data);
+        try {
+          await saveCompanyProfile(company);
+        } catch (profileErr) {
+          await deleteCurrentCompany().catch(() => {});
+          throw profileErr;
+        }
+        onRegistered();
+      } else {
+        // Returning to this step (e.g. "Change Number") — the account already
+        // exists, so just update the profile. Re-registering would 409.
         await saveCompanyProfile(company);
-      } catch (profileErr) {
-        await deleteCurrentCompany().catch(() => {});
-        throw profileErr;
+      }
+      // Upload the logo once the company row exists. Non-fatal: registration
+      // still succeeds if S3 is unavailable — only logo_file_key is missing.
+      if (company.logoFile) {
+        await uploadCompanyLogo(company.logoFile).catch(() => {});
       }
       onContinue();
     } catch (err) {
@@ -205,14 +220,6 @@ export default function Step2AdminDetails({ data, company, onChange, onBack, onC
               </div>
             </Section>
 
-            {/* Invite Team Members */}
-            <Section title="Invite Team Members (Optional)" icon={<UsersIcon />}>
-              <p className="text-[12.5px] text-ink-500 mb-2.5">You can invite team members after your account is created.</p>
-              <button type="button" className="px-4 py-2 rounded-lg border border-brand-300 text-brand-700 text-[13px] font-semibold hover:bg-brand-50 transition">
-                Invite Team Members Later
-              </button>
-            </Section>
-
             {/* Bottom buttons */}
             <div className="mt-7 flex items-center justify-between border-t border-ink-100 pt-5">
               <button onClick={onBack} disabled={isLoading}
@@ -318,9 +325,9 @@ function PhoneField({ cc, onCc, value, onValue, placeholder }: {
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"><PhoneIcon /></span>
         <input
           value={value ?? ""}
-          onChange={(e) => onValue(e.target.value.replace(/\D/g, "").slice(0, 15))}
+          onChange={(e) => onValue(e.target.value.replace(/\D/g, "").slice(0, 10))}
           inputMode="numeric"
-          maxLength={15}
+          maxLength={10}
           placeholder={placeholder}
           className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400 placeholder:text-ink-400"
         />

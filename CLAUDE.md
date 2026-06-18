@@ -190,7 +190,8 @@ hiremind_web/
 │   └── globals.css             # Tailwind v4 design tokens — do not rename tokens
 │
 ├── components/
-│   └── marketing/              # Shared marketing-only UI (Header, Footer, BrandLogo)
+│   └── marketing/              # Shared marketing-only UI: Header, Footer, BrandLogo, CTABanner, ComingSoon,
+│                               #   icons.tsx (all marketing SVGs + Glyph/ICONS registry), Pill, StatsStrip, HeroActions
 │
 ├── lib/
 │   ├── utils.ts                # Shared utilities — toLabel() and future helpers
@@ -216,12 +217,12 @@ hiremind_web/
 │   │       │       ├── ui.tsx         # ConfirmDialog, Tooltip, SelectField, etc.
 │   │       │       └── validators.ts  # isValidEmail, isStrongPassword, isValidMMYYYY, isDateRangeValid
 │   │       └── company-reg/           # 3-step company registration
-│   │           ├── CompanyRegistration.tsx  # Parent — holds CompanyData state across steps
+│   │           ├── CompanyRegistration.tsx  # Parent — holds CompanyData + admin + `registered` flag across steps
 │   │           ├── shared/types.ts          # CompanyData (includes logoFile?: File | null)
 │   │           └── steps/
 │   │               ├── Step1CompanyDetails.tsx  # Company details form + logo file picker (JPG/PNG/SVG ≤2MB, preview)
-│   │               ├── Step2AdminDetails.tsx    # Admin details → registerCompanyUser() + saveCompanyProfile()
-│   │               └── Step3Verification.tsx    # OTP stub → uploadCompanyLogo(logoFile) → /company/dashboard
+│   │               ├── Step2AdminDetails.tsx    # Admin details → registerCompanyUser() + saveCompanyProfile() + uploadCompanyLogo(); mobile fields capped at 10 digits; `registered` guard skips re-register on return
+│   │               └── Step3Verification.tsx    # OTP mock stub (demo notice) → /company/dashboard
 │   │
 │   ├── company/
 │   │   └── components/
@@ -372,8 +373,8 @@ All tab content uses `space-y-4` root with inner `card` wrappers — no tab shou
 On load, `FullProfile` is mapped to registration types so existing modal-based sections work unchanged:
 - `WorkExperienceProfile` → `Experience`: ISO dates → `MM/YYYY`, enum names → display labels via `toLabel()`
 - `EducationProfile` → `Education`: nullable fields default to `""`
-- `SkillProfile` → `Skill`: proficiency reverse-mapped (`BEGINNER` → `"Beginner"`, etc.); **no `yearsOfExperience` mapping** (field removed)
-- `CertificationProfile` → `Certification`: `validTill` ISO → `"Month YYYY"` display format
+- `SkillProfile` → `Skill`: proficiency reverse-mapped (`BEGINNER` → `"Beginner"`, etc.); **no `yearsOfExperience` mapping** (field removed); `lastUsed` (ISO → `"MMM YYYY"`) and `additionalDetails` are mapped so the edit-skill dialog pre-populates
+- `CertificationProfile` → `Certification`: `validTill` ISO → `"Month YYYY"` display format; `credentialId`, `certificateUrl`, `description`, `displayOnProfile` are mapped so the edit-certification dialog pre-populates (previously blank → wiped on save)
 - `FullProfile` scalars + `PreferenceProfile[]` → `PreferencesData`; preferences filtered by `type === "ROLE" | "EMPLOYMENT_TYPE" | "BENEFIT"`
 - `preferredLocations` mapped from `fp.preferredLocation` by splitting on `", "` — stored as `string[]`
 - Basic Info tab includes **Professional Summary** textarea pre-populated from `fp.professionalSummary`
@@ -515,7 +516,7 @@ Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"
   - Stores tokens + userId via SSR-safe helpers; writes **`hiremind_company_name`** via `setStoredCompanyName()`
   - Throws with field-level error message on failure
 - `saveCompanyProfile(step1: CompanyRegStep1Data)` → `PUT /api/company/company/profile` — sends Step 1 details; sets status DRAFT → ACTIVE; updates `hiremind_company_name` in localStorage
-- `uploadCompanyLogo(file: File)` → `POST /api/company/company/logo/upload` — multipart; returns S3 `logoKey` or null
+- `uploadCompanyLogo(file: File)` → `POST /api/company/company/logo/upload` — multipart; reads `logoFileKey` from the `CompanyResponse` and caches the presigned `logoUrl` via `setStoredCompanyLogoUrl()` so the logo shows immediately; returns the key or null
 - `fetchCompanyProfile()` → `GET /api/company/company/profile` — caches `companyName` + `logoUrl` (presigned S3 URL) to localStorage; used after login
 - `deleteCurrentCompany()` → `DELETE /api/users/users/me` (rollback; mirrors `deleteCurrentUser()` in auth.service.ts)
 
@@ -528,10 +529,12 @@ Country code is read from `process.env.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? "+91"
 
 **Registration flow:**
 1. Step 1 (Company Details) — logo file picker (JPG/PNG/SVG, ≤ 2 MB, inline preview with Change/Remove); validates locally; stores in parent `company` state including `logoFile`; **no API call**
-2. Step 2 (Admin Details) — validates → `registerCompanyUser(step2Data)` → tokens stored → `saveCompanyProfile(step1Data)` — wires Step 1 to `company_api` → advance to Step 3
-3. Step 3 (Verification) — OTP stub (visual only); "Verify & Complete" → `uploadCompanyLogo(company.logoFile)` (non-fatal) → `router.push("/company/dashboard")`
+2. Step 2 (Admin Details) — validates → `registerCompanyUser(step2Data)` → tokens stored → `saveCompanyProfile(step1Data)` → **`uploadCompanyLogo(company.logoFile)`** (non-fatal; runs here so the logo is persisted as soon as the company row exists) → advance to Step 3. Mobile / Alternate Mobile are capped at **10 digits**. The **"Invite Team Members"** section was removed.
+3. Step 3 (Verification) — OTP **mock stub** (no real delivery — any 6-digit code except `000000` verifies; demo notice shown). "Complete Setup" is gated on both verified → `router.push("/company/dashboard")`. The **"Additional Verification"** section was removed; the Step 3 logo upload was moved to Step 2.
 
-**Logo upload is non-fatal:** if S3 is down, the company is still registered and the profile is saved; only the logo key is missing. The `catch(() => {})` in Step3 ensures the redirect always happens.
+**Back-navigation guard:** `CompanyRegistration` holds a `registered` flag; once Step 2 creates the account it passes `registered=true` to `Step2AdminDetails`. On return (e.g. "Change Number"), Continue **skips `registerCompanyUser`** (which would 409 "email already exists") and only re-runs `saveCompanyProfile` + logo upload. Rollback (`deleteCurrentCompany`) only fires on the first registration.
+
+**Logo upload is non-fatal:** if S3 is down, the company is still registered and the profile is saved; only the logo key is missing (`catch(() => {})` around `uploadCompanyLogo`).
 
 **Step 1 logo picker constraints:** accepts `.jpg,.jpeg,.png,.svg`; max 2 MB; validates MIME and size before setting `logoFile`; shows data-URL preview immediately from `FileReader`. Error shown inline below the picker.
 
@@ -644,7 +647,8 @@ uploadProfilePicture(file: File): Promise<string | null>         // returns prof
 - `CandidateRegStep1Data` (auth.types.ts) — `hearAboutUs: string` replaced with `professionalSummary: string`
 - `CandidateRegStep3Data` (auth.types.ts) — `preferredLocation: string` replaced with `preferredLocations: string[]`
 - `FullProfile` (candidate.service.ts) — added `resumeFileKey: string | null`, `professionalSummary: string | null`, `profilePictureKey: string | null`, `profilePictureUrl: string | null`
-- `CertificationProfile` (candidate.service.ts) — added `certificateFileKey?: string | null`
+- `SkillProfile` (candidate.service.ts) — added `lastUsed: string | null`, `additionalDetails: string | null` (returned by API, now surfaced in edit)
+- `CertificationProfile` (candidate.service.ts) — added `certificateFileKey?: string | null`, plus `credentialId`, `certificateUrl`, `description`, `displayOnProfile` (returned by API, now surfaced in edit)
 - `EducationProfile` (candidate.service.ts) — added `attachmentFileKeys?: string[] | null`
 - `CandidateRegStep2Data` (auth.types.ts) — added `resumeFileKey: string`
 
@@ -653,6 +657,9 @@ uploadProfilePicture(file: File): Promise<string | null>         // returns prof
 #### Add Skill modal — current state
 - **Years of Experience slider removed** — the slider UI and `yearsOfExperience` field are gone. Experience is still captured via the "Experience in this skill" inputs (`experienceValue` + `experienceUnit`) and sent as `experienceYears` (decimal) via `buildSkillPayload`.
 - **Top Skill** — replaced the toggle button with a checkbox (`<input type="checkbox">`); same `topSkill` boolean sent to backend.
+
+#### New-row id resolution (add skill / certification)
+`addCandidateSkill(payload, existingIds)` and `addCertification(payload, existingIds)` identify the newly created row by **diffing the returned list against the ids the caller already had** — not by taking the last element. The `GET`-shaped response is ordered (certifications by `passedYear DESC`), so the last item is **not** the newest. `CertificationsSection` passes `certifications.map(c => c.id)`; `AddSkillModal` passes `addedSkills.map(s => s.id)`. Without this, the modal emitted the new row under an existing id and the list silently failed to grow until a refresh.
 
 #### Preferred Work Location — multi-select
 `PreferencesSection` renders `LOCATION_OPTIONS` as checkboxes; selected values stored in `pref.preferredLocations: string[]`. `buildPreferencesPayload` joins them with `", "` → single `preferredLocation` string for the backend. `EditProfilePage` splits the stored string back to `string[]` on load.
@@ -728,4 +735,5 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 14. **candidate.service.ts split** — mixed domains; split into `profile.service.ts`, `experience.service.ts`, `education.service.ts`, `skills.service.ts`, `certifications.service.ts`, `preferences.service.ts`, `master.service.ts`, `upload.service.ts`
 15. **React Query + Zustand** — install after backend integration complete
 16. **ESLint + Prettier** — code quality tooling
-17. **Company logo refresh after registration** — after Step 3 uploads the logo, `hiremind_company_logo_url` is not yet populated in localStorage (upload returns a key, not a URL); a `fetchCompanyProfile()` call in Step 3 after upload would cache the presigned URL so `CompanyHeader` shows the logo immediately on first dashboard load
+17. ~~Company logo refresh after registration~~ — **DONE.** Logo is uploaded in Step 2 (right after the company row is created) and `uploadCompanyLogo()` now caches the presigned `logoUrl` via `setStoredCompanyLogoUrl()`, so `CompanyHeader` shows the logo on first dashboard load.
+18. **Company admin email/phone update** — the registered email/phone live on the user account; `saveCompanyProfile` doesn't update them and there's no user-update endpoint. "Change Number" on Step 2 return updates the display value only — add a `PUT /users/me` (or similar) to persist real changes.

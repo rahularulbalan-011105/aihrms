@@ -145,9 +145,9 @@ function mapToSkill(s: FullProfile["skills"][0]): Skill {
     proficiency: PROFICIENCY_REVERSE[s.proficiencyLevel] ?? "Intermediate",
     experienceValue: expYears > 0 ? expYears.toString() : "",
     experienceUnit: "Years",
-    lastUsed: "",
+    lastUsed: isoToMonthYear(s.lastUsed),
     highlighted: s.topSkill,
-    additionalDetails: "",
+    additionalDetails: s.additionalDetails ?? "",
   };
 }
 
@@ -163,11 +163,13 @@ function mapToCertification(
     id: c.id,
     name: c.certificationName,
     institution: c.issuingInstitution,
+    credentialId: c.credentialId ?? undefined,
+    certificateUrl: c.certificateUrl ?? undefined,
     passedYear: c.passedYear?.toString() ?? "",
     validTill,
     doesNotExpire: c.doesNotExpire,
-    description: "",
-    displayOnProfile: true,
+    description: c.description ?? undefined,
+    displayOnProfile: c.displayOnProfile ?? true,
     certificateFileKey: c.certificateFileKey ?? undefined,
   };
 }

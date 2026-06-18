@@ -17,9 +17,11 @@ interface Props {
   onClose: () => void;
   onSaved: (cert: Certification) => void;
   editCert?: Certification;
+  /** Ids already in the list — used to reliably identify the newly created row. */
+  existingIds?: string[];
 }
 
-export default function AddCertificationModal({ onClose, onSaved, editCert }: Props) {
+export default function AddCertificationModal({ onClose, onSaved, editCert, existingIds = [] }: Props) {
   const isEdit = Boolean(editCert);
 
   const [form, setForm] = useState<CertificationFormData>(editCert ? {
@@ -94,7 +96,7 @@ export default function AddCertificationModal({ onClose, onSaved, editCert }: Pr
         await updateCertification(editCert.id, payload);
         certId = editCert.id;
       } else {
-        certId = await addCertification(payload);
+        certId = await addCertification(payload, existingIds);
       }
 
       let certificateFileKey: string | undefined;

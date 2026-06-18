@@ -17,6 +17,8 @@ export default function CompanyRegistration() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [company, setCompany] = useState<CompanyData>({} as CompanyData);
   const [admin, setAdmin] = useState<AdminData>({} as AdminData);
+  // Once the account is created in Step 2, returning must not re-register it.
+  const [registered, setRegistered] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F7FF]">
@@ -37,6 +39,8 @@ export default function CompanyRegistration() {
         <Step2AdminDetails
           data={admin}
           company={company}
+          registered={registered}
+          onRegistered={() => setRegistered(true)}
           onChange={setAdmin}
           onBack={() => setStep(1)}
           onContinue={() => setStep(3)}

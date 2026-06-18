@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { CompanyData, AdminData } from "../shared/types";
 import HorizontalStepper from "../shared/HorizontalStepper";
 import VerticalStepper from "../shared/VerticalStepper";
-import { uploadCompanyLogo } from "@/modules/auth/services/company.service";
 import { authService } from "@/modules/auth/services/auth.service";
 
 interface Props {
@@ -26,9 +25,7 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
   async function handleComplete() {
     if (!bothVerified) return;
     setIsCompleting(true);
-    if (company.logoFile) {
-      await uploadCompanyLogo(company.logoFile).catch(() => {});
-    }
+    // Logo is uploaded in Step 2 (right after the company profile is created).
     router.push("/company/dashboard");
   }
 
@@ -128,16 +125,10 @@ export default function Step3Verification({ company, admin, onBack, onEdit }: Pr
               />
             </div>
 
-            {/* Additional Verification */}
-            <div className="mt-8">
-              <h3 className="font-display font-bold text-[14px]">Additional Verification (Recommended)</h3>
-              <p className="text-[12px] text-ink-500 mt-0.5 mb-3.5">Add an extra layer of security to your account</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <ExtraVerify icon="google"  title="Verify with Google"    body="Use your Google account to verify instantly" />
-                <ExtraVerify icon="ms"      title="Verify with Microsoft" body="Use your Microsoft account to verify instantly" />
-                <ExtraVerify icon="shield"  title="Authenticator App"     body="Use authenticator app for secure verification" />
-              </div>
-            </div>
+            {/* Demo notice — OTP delivery is not wired up yet */}
+            <p className="mt-3 text-[11.5px] text-ink-400 text-center">
+              Demo mode: codes are not sent yet — enter any 6-digit number (except 000000) to verify.
+            </p>
 
             {/* Unlock Powerful Hiring Tools */}
             <div className="mt-6 rounded-xl bg-brand-50/60 border border-brand-100 px-4 py-3.5 flex flex-col md:flex-row md:items-center gap-4">
@@ -330,23 +321,6 @@ function OtpCard({ title, target, helperLeft, helperRight, helperRightIcon, onCh
   );
 }
 
-function ExtraVerify({ icon, title, body }: { icon: "google" | "ms" | "shield"; title: string; body: string }) {
-  return (
-    <button type="button" className="rounded-xl border border-ink-100 p-4 text-left hover:border-brand-300 transition flex items-center gap-3">
-      <span className="w-10 h-10 rounded-md bg-white flex items-center justify-center shrink-0 border border-ink-100">
-        {icon === "google" && <GoogleIcon />}
-        {icon === "ms"     && <MSIcon />}
-        {icon === "shield" && <span className="text-brand-700"><ShieldIcon /></span>}
-      </span>
-      <div className="flex-1 leading-snug">
-        <div className="text-[13px] font-bold">{title}</div>
-        <div className="text-[11px] text-ink-500">{body}</div>
-      </div>
-      <span className="text-ink-400"><ChevronRight /></span>
-    </button>
-  );
-}
-
 function ToolPill({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div className="flex flex-col items-center text-center gap-1.5">
@@ -410,7 +384,6 @@ function InfoIcon() { return (<svg width="13" height="13" viewBox="0 0 24 24" fi
 function RefreshIcon() { return (<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
 function ArrowRight() { return (<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L8 3m5 5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
 function ArrowLeft() { return (<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 8H3m0 0l5-5m-5 5l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
-function ChevronRight() { return (<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
 function HeadsetIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1v-5zm16 0h-3v6h2a1 1 0 0 0 1-1v-5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }
 function LockIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function DocIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M7 2h8l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="1.6" /><path d="M9 12h6M9 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
@@ -418,19 +391,3 @@ function UsersIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" f
 function MatchIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8h6M4 16h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /><rect x="13" y="5" width="7" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function ChartIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 4v16h16" stroke="currentColor" strokeWidth="1.6" /><rect x="7" y="13" width="3" height="5" fill="currentColor" /><rect x="12" y="9" width="3" height="9" fill="currentColor" /><rect x="17" y="6" width="3" height="12" fill="currentColor" /></svg>); }
 function TeamIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3" stroke="currentColor" strokeWidth="1.6" /><path d="M4 20c0-3 4-5 8-5s8 2 8 5" stroke="currentColor" strokeWidth="1.6" /></svg>); }
-function GoogleIcon() { return (
-  <svg width="16" height="16" viewBox="0 0 18 18">
-    <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.62z" fill="#4285F4"/>
-    <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.32A9 9 0 0 0 9 18z" fill="#34A853"/>
-    <path d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3.01-2.32z" fill="#FBBC05"/>
-    <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.99 8.99 0 0 0 9 0 9 9 0 0 0 .96 4.96l3.01 2.32C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/>
-  </svg>
-); }
-function MSIcon() { return (
-  <svg width="16" height="16" viewBox="0 0 18 18">
-    <rect width="8" height="8" fill="#F25022"/>
-    <rect x="10" width="8" height="8" fill="#7FBA00"/>
-    <rect y="10" width="8" height="8" fill="#00A4EF"/>
-    <rect x="10" y="10" width="8" height="8" fill="#FFB900"/>
-  </svg>
-); }
