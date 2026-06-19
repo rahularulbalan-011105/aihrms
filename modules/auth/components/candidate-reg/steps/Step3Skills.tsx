@@ -28,22 +28,20 @@ interface Props {
 }
 
 export default function Step3Skills({ data, onChange, onNext, onBack }: Props) {
-  const [skills, setSkills] = useState<Skill[]>(data.skills);
-  const [certs, setCerts] = useState(data.certifications);
+  const [skills, setSkills] = useState<Skill[]>(data.skills ?? []);
+  const [certs, setCerts] = useState(data.certifications ?? []);
   const [pref, setPref] = useState<PreferencesData>({
     noticePeriod: data.noticePeriod || "30 Days",
     expectedSalary: data.expectedSalary || "10 – 15 LPA",
     salaryType: data.salaryType || "Fixed",
-    jobRolePreferences: data.jobRolePreferences.length
-      ? data.jobRolePreferences
-      : [],
-    preferredLocation: data.preferredLocation || "Bangalore",
-    openToRelocate: data.openToRelocate,
-    employmentTypes: data.employmentTypes.length
+    jobRolePreferences: data.jobRolePreferences ?? [],
+    preferredLocations: data.preferredLocations ?? [],
+    openToRelocate: data.openToRelocate ?? false,
+    employmentTypes: data.employmentTypes?.length
       ? data.employmentTypes
       : ["FULL_TIME"],
-    benefits: data.benefits.length ? data.benefits : [],
-    additionalNotes: data.additionalNotes,
+    benefits: data.benefits ?? [],
+    additionalNotes: data.additionalNotes ?? "",
   });
 
   const [skillModal, setSkillModal] = useState<{

@@ -280,9 +280,12 @@ hiremind_web/
 | `/company/dashboard` | Company/recruiter dashboard | ✅ Built (Active Jobs count live; rest static) |
 | `/company/jobs` | Recruiter job list (All / Active / Draft / Closed tabs, stat tiles, filters, insights rail) | ✅ Built + API wired |
 | `/company/jobs/new` | 4-step job posting wizard (Details → Requirements → Compensation → Review) | ✅ Built + API wired |
-| `/company/jobs/[id]/applications` | View Applications — candidate list for a job (tabs, filters, table, match distribution, summary donut, fake-profile + quick-action rail) | ✅ Built (mock data) |
+| `/company/jobs/[id]/applications` | View Applications — live applicant list for a job (job header from `fetchJobFull`, status tabs + counts, paginated table, "Edit Job" → `[id]/edit`, "Compare" → `[id]/compare`); rail panels (match distribution, summary donut, fake-profile, quick actions) still mock | ✅ Built + API wired |
+| `/company/jobs/[id]/compare` | Compare Candidates — 4 candidate header cards + side-by-side comparison (Overall Match donut, Key Strengths, Skills bars, Experience Summary, Education, Overview) + legend; rail (AI Summary best-match + ranking, AI Recommendations, Quick Actions) | ✅ Built (mock data) |
 | `/company/applications` | Applications (agency-wide) — 5 stat tiles, search + labeled filters, full-width table (candidate/job/stage/match/experience/date/actions), pagination | ✅ Built (mock data) |
-| `/company/jobs/[id]/edit` | Edit Job — 5-section prefilled form (Details, Description, Requirements, Compensation, Settings) + rail (Job Preview, Visibility, Match Distribution, Quick Actions) | ✅ Built (mock data) |
+| `/company/jobs/[id]/edit` | Edit Job — 5-section form (Details, Description+Responsibilities, Requirements, Compensation, Settings) prefilled from `GET /company/jobs/{id}` and saved via `PUT /company/jobs/{id}`; live Job Preview rail | ✅ Built + API wired |
+| `/company/clients` | Clients list — 3 stat tiles (Total/Active/Open Jobs), search + Industry/Status/Account-Manager filters, table (Client Name/Industry/Account Manager/Open Jobs/Last Activity/Status/Actions), empty state, footer pagination; rail (Client Overview donut, Top Clients, Recent Additions, Quick Actions). Sidebar "Clients" links here; "Add New Client" → `/company/clients/new` | ✅ Built (UI only — no clients API yet) |
+| `/company/clients/new` | Add New Client — 3-section form (Company Information, Primary Contact, Billing) + rail (Why Add a Client / Information Guide / What's Next); breadcrumb + Cancel return to `/company/clients` | ✅ Built (UI only — no clients API yet) |
 | `/jobs` | Job listings | ⏳ Pending |
 | `/candidates` | Candidate search (recruiter) | ⏳ Pending |
 | `/company/profile` | Company profile page | ⏳ Pending |
@@ -567,9 +570,11 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 | `POST` | `/company/jobs/publish` | Create + publish a job in one call (wizard finish) |
 | `PUT` | `/company/jobs/{id}` | Update an existing job (ownership-guarded) |
 | `POST` | `/company/jobs/{id}/publish` | Promote an existing `DRAFT` → `PUBLISHED` |
-| `GET` | `/company/jobs?status=&page=&size=` | Paginated list (filter by `PUBLISHED`/`DRAFT`) |
+| `GET` | `/company/jobs?status=&page=&size=` | Paginated list (filter by any `JobStatus`: `PUBLISHED`/`DRAFT`/`CLOSED`/`EXPIRED`; omit `status` for all) |
 | `GET` | `/company/jobs/counts` | `{ total, published, drafts }` for the dashboard |
 | `GET` | `/company/jobs/{id}` | Full job detail |
+
+> **`JobSummaryResponse`** carries enough for the list cards: identity/status/openings/location plus `experienceMinYears`, `experienceMaxYears`, `salaryType`, `currency`, `annualCtc`, and `skills` (`List<SkillRowResponse>`). `toSummary()` lazy-loads skills inside the read-only tx (N+1 across the page — fine at size 20; add `@EntityGraph` if it grows).
 
 **Lifecycle:** `JobStatus` enum = `DRAFT, PUBLISHED, CLOSED, EXPIRED`. `publishedAt` set on first publish. `findByIdAndUserId` guards all per-job operations to the owning recruiter.
 
@@ -584,15 +589,40 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 **Frontend** — `modules/company/jobs/services/job.service.ts`:
 - `publishJob(draft)` → `POST /company/jobs/publish` → returns `{ id }`; wizard redirects to `/company/jobs/published?jobId=<id>`
 - `saveDraftJob(draft)` → `POST /company/jobs/draft`
-- `listJobs(status?, page?, size?)` → `GET /company/jobs` (used by `JobsList.tsx`)
+- `listJobs(status?, page?, size?)` → `GET /company/jobs` (used by `JobsList.tsx`; `JobApiResponse` mirrors the expanded summary, incl. `skills`)
 - `fetchJobCounts()` → `GET /company/jobs/counts` (used by `CompanyDashboard.tsx`; non-fatal — counts stay 0 on error)
+- `fetchJob(id)` → `GET /company/jobs/{id}` → `JobDetail` subset (used by `PublishSuccess`)
+- `fetchJobFull(id)` → `GET /company/jobs/{id}` → full `JobFullDetail` (used by `EditJobPage` to prefill)
+- `updateJob(id, draft)` → `PUT /company/jobs/{id}` (reuses `draftToRequest`; used by `EditJobPage`)
+- `responseToDraft(detail)` maps `JobFullDetail` → `JobDraft` so the edit form prefills; inverse of `draftToRequest`
 - `draftToRequest(draft)` maps `JobDraft` → `JobUpsertRequest`: `confidential: d.confidential === "Yes"`, salary commas stripped, empty dates → `null`, skills → `{ name, minExperience, unit:"YEARS", mandatory:true }`
+
+> **Jobs module follows the File Size Standards** (architecture.md): pages are thin orchestrators; reusable units live in `modules/company/jobs/shared/` (`icons.tsx` — canonical icon set with `size`/`className` props; `forms.tsx` — `Label`/`SectionHeader`/`Field`/`Select`/`ChipField`; `format.ts` — `formatDate`/`formatSalary`/`formatExperience`) and `components/` (`StatCard`, `FilterSelect` (`tinted`/`outline`), `JobStatusBadge`, `Donut` (conic-gradient + legend), plus page-local folders `jobs-list/`, `edit-job/`, `job-applications/`, `compare/`, `publish-success/` holding cards/rows/rails + mock `data.ts`). **Never redefine job icons or form primitives inline — import from `shared/`.** Compare/PublishSuccess keep a distinct thin-stroke icon set in their own folders (not duplicated elsewhere).
 
 `Step1JobDetails` validates required fields (`title`, `workplaceLocation`, `description`) before advancing — `roleCategory` is **optional**. Both "Next: Requirements" buttons call `handleContinue()`. `CompanySidebar` "Jobs" link points to `/company/jobs` (the list), which has a "Post New Job" CTA → `/company/jobs/new`.
 
 **Wizard is 4 steps** (`StepNum = 1 | 2 | 3 | 4`): Step1 Details → Step2 Requirements → Step3 Compensation → Step4 Review (rendered by `Step5ReviewPublish.tsx`, kept under its original filename). The **Preferences step was removed** (`Step4Preferences.tsx` deleted); `JobDraft.preferences` still exists with `EMPTY_JOB` defaults and is still submitted by `draftToRequest`. `RightRail` takes `showProgress` / `showJobSummary` props (both hidden on Step 1/2 as configured). Salary Range salary type shows Min/Max inputs (`salaryMin`/`salaryMax` — frontend-only, not sent to backend).
 
 > **Do not** add a separate preference "job shift" column — `jobShift` is a Step 1 field that maps to `jobs.job_shift`. Working hours / time zone (from `JobDraft.preferences` defaults) are persisted.
+
+### Job Applications API (`company_api` + `candidate_api`)
+The View Applications page (`/company/jobs/[id]/applications`) is wired end-to-end. **company_api owns** the `job_applications` domain; **candidate profile details are hydrated live from candidate_api** at read time (only `candidate_user_id` is stored — no denormalized snapshot).
+
+| Method | Path | Account | Description |
+|---|---|---|---|
+| `POST` | `/company/jobs/{id}/apply` | CANDIDATE | Apply to a published job (unique per job+candidate) |
+| `GET` | `/company/jobs/{id}/applications?status=&page=&size=` | RECRUITMENT_COMPANY | Paginated applicant list (ownership-guarded); each row hydrated from candidate_api |
+| `GET` | `/company/jobs/{id}/applications/counts` | RECRUITMENT_COMPANY | `{ total, applied, shortlisted, interview, offered, rejected }` for the tabs |
+| `PATCH` | `/company/jobs/{id}/applications/{appId}/status` | RECRUITMENT_COMPANY | Update an applicant's status |
+
+- **`ApplicationStatus`** enum: `APPLIED, SHORTLISTED, INTERVIEW, OFFERED, REJECTED`. `V4__job_applications.sql` (FK → `jobs`, unique `(job_id, candidate_user_id)`).
+- **`CandidateClient`** (`company_api/client/`) — `RestClient` to `candidate_api` (`hiremind.candidate-service.base-url`); **forwards the caller's bearer token** (same users_api signing key authenticates there) and degrades to `null` per row so one unreachable profile never breaks the list.
+- **candidate_api** exposes `GET /profile/{userId}/summary` → `ApplicantSummary` (name, email, phone, role, company, experience, `verified` = profile SUBMITTED).
+- **Frontend** — `services/applications.service.ts`: `fetchApplications(jobId, status?, page?, size?)`, `fetchApplicationCounts(jobId)`, `updateApplicationStatus(jobId, appId, status)`. `JobApplicationsPage` maps `ApplicationResponse` → the existing `Candidate` view-model (so `CandidateRow` is unchanged) and loads the header via `fetchJobFull`.
+- **Still mock / pending:** `matchScore` is a nullable column (no AI scoring → rows show 0%); the rail panels (Match Distribution, Application Summary donut, Detect Fake Profiles) and the fake-profile flag; filters/search/sort are UI-only; there is no candidate-facing "Apply" button yet (the `POST /apply` endpoint exists).
+
+### Pagination — shared component
+`components/ui/Pagination.tsx` is the **app-wide** pager — `<Pagination page={page} totalPages={n} onChange={setPage} />` (1-based). Prev / numbered pages / Next with disabled ends; **ellipsis truncation** when `totalPages > 7` (shows 1 … current±1 … last); renders `null` at ≤1 page. **Use it everywhere — never hand-roll pager markup.** In use on: JobsList (client-side 3/page + auto-select first job), JobApplicationsPage, CompanyApplicationsPage, SavedJobsPage, MyApplicationsPage.
 
 ### Auth / Session — 401/403 Handling
 `authedFetch` in `candidate.service.ts` redirects to `/login` on any `401` or `403`. Access token TTL: **1440 min** in dev (`users_api/application.properties`).
@@ -727,7 +757,7 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 6. **NextAuth v5** — replace localStorage tokens with real session management
 7. **Middleware** — route protection and RBAC
 8. **Company dashboard — real data** — "Active Jobs" stat is now live via `fetchJobCounts()`; remaining stats (candidates, applications, interviews, hires) + Recent Activity are still static and need their own `company_api` domains
-9. **Jobs — remaining flows** — job **edit** page UI built at `/company/jobs/[id]/edit` (mock-prefilled `EditJobPage`); still needs API wiring (`GET`/`PUT /company/jobs/{id}`). `JobsList`, `JobApplicationsPage`, `CompanyApplicationsPage` use mock/demo data — wire applications + counts APIs, close/expire actions, real pagination
+9. **Jobs — remaining flows** — ~~edit page API wiring~~ **DONE**; ~~`JobsList` real summary data~~ **DONE**; ~~View Applications API~~ **DONE** (`job_applications` domain + `GET/POST/PATCH`, candidate_api hydration — see Job Applications API). Still mock/demo: `CompareCandidatesPage`; `JobApplicationsPage` rail panels (match distribution, summary donut, fake-profile) + `matchScore` (need AI scoring); `CompanyApplicationsPage` (agency-wide applications API); candidate-facing **Apply** button; applicant filters/search/sort; close/expire actions; the `JobsList` Applications/Interviews stat tiles
 10. **Dashboard — real data** — replace mock job/stats data with live API calls
 11. **Profile — sub-section pages** — implement `/profile/experience`, `/profile/education`, `/profile/skills`, `/profile/preferences` routes; `ProfileOverviewCard` match score from API
 12. **LoginPage accessibility** — add `htmlFor`/`id` to all form labels and inputs (same pattern as `Step1BasicInfo.tsx`)

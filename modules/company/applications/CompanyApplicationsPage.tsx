@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Pagination } from "@/components/ui/Pagination";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Applications (agency-wide) — all applications across jobs.
@@ -50,6 +51,7 @@ const FILTERS = [
 
 export default function CompanyApplicationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const allChecked = selected.size === APPLICATIONS.length;
   const toggleAll = () => setSelected(allChecked ? new Set() : new Set(APPLICATIONS.map((a) => a.id)));
@@ -154,15 +156,7 @@ export default function CompanyApplicationsPage() {
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <span className="text-[12.5px] text-ink-500">Showing 1 to {APPLICATIONS.length} of 248 results</span>
-        <div className="flex items-center gap-1">
-          <PagerBtn><ArrowLeft /></PagerBtn>
-          <button className="w-8 h-8 rounded-lg text-[13px] font-semibold bg-brand-600 text-white">1</button>
-          <button className="w-8 h-8 rounded-lg text-[13px] font-semibold text-ink-600 hover:bg-ink-100">2</button>
-          <button className="w-8 h-8 rounded-lg text-[13px] font-semibold text-ink-600 hover:bg-ink-100">3</button>
-          <span className="px-1 text-ink-400">…</span>
-          <button className="w-8 h-8 rounded-lg text-[13px] font-semibold text-ink-600 hover:bg-ink-100">31</button>
-          <PagerBtn><ArrowRight /></PagerBtn>
-        </div>
+        <Pagination page={page} totalPages={31} onChange={setPage} />
         <div className="flex items-center gap-2 text-[12.5px] text-ink-500">
           Rows per page
           <div className="relative inline-flex items-center">
@@ -238,10 +232,6 @@ function Row({ a, selected, onToggle }: { a: Application; selected: boolean; onT
 function IconBtn({ children, label }: { children: React.ReactNode; label: string }) {
   return <button className="w-8 h-8 rounded-lg border border-ink-200 text-ink-500 hover:text-brand-600 hover:border-brand-300 flex items-center justify-center transition-colors" aria-label={label}>{children}</button>;
 }
-function PagerBtn({ children }: { children: React.ReactNode }) {
-  return <button className="w-8 h-8 rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-100 flex items-center justify-center">{children}</button>;
-}
-
 function LabeledSelect({ label, options, placeholder, icon }: { label: string; options: string[]; placeholder?: string; icon?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5 min-w-[150px] flex-1">
@@ -271,5 +261,3 @@ function ListIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fi
 function EyeIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>); }
 function ChatIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>); }
 function KebabIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>); }
-function ArrowLeft() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>); }
-function ArrowRight() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>); }

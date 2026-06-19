@@ -124,10 +124,10 @@ export default function SidebarProgress({ currentStep }: SidebarProgressProps) {
           Our support team is here to assist you.
         </p>
         <a
-          href="mailto:support@hiremind.ai"
+          href="mailto:contact@arvantra-ai.com"
           className="text-[12.5px] text-brand-600 font-semibold hover:underline"
         >
-          support@arvantra-ai.com
+          contact@arvantra-ai.com
         </a>
       </div>
     </div>

@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import { Pagination } from "@/components/ui/Pagination";
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * Saved Jobs — matches HM_Cand_MySavedJobs reference.
  * Types are shaped for a future GET /saved-jobs response (drop-in swap).
  * ───────────────────────────────────────────────────────────────────────────── */
+const PAGE_SIZE = 3;
+
 type MatchLabel = "High Match" | "Good Match" | "Low Match";
 
 interface SavedJob {
@@ -58,8 +63,12 @@ const RECOMMENDATIONS = [
 
 /* ─── Page ───────────────────────────────────────────────────────────────────── */
 export default function SavedJobsPage() {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(SAVED_JOBS.length / PAGE_SIZE);
+  const pageJobs = SAVED_JOBS.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
-    <div className="flex flex-col xl:flex-row gap-6 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* ── Centre column ── */}
       <div className="flex-1 min-w-0 space-y-5">
         {/* Header */}
@@ -104,20 +113,19 @@ export default function SavedJobsPage() {
 
         {/* Saved job list */}
         <div className="space-y-3">
-          {SAVED_JOBS.map((job) => <SavedJobCard key={job.id} job={job} />)}
+          {pageJobs.map((job) => <SavedJobCard key={job.id} job={job} />)}
         </div>
 
-        {/* Load more */}
-        <div className="text-center pt-1">
-          <button className="text-[13.5px] text-brand-600 font-semibold hover:text-brand-800 transition-colors inline-flex items-center gap-1.5">
-            Load More Saved Jobs
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
-          </button>
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center pt-1">
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       {/* ── Right rail ── */}
-      <aside className="w-full xl:w-[300px] shrink-0 space-y-4 hidden xl:block">
+      <aside className="w-full lg:w-[300px] shrink-0 space-y-4 hidden lg:block">
         <SavedJobsInsightsPanel />
         <ExpiringSoonPanel />
         <RecommendationsPanel />

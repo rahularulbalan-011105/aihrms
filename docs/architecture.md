@@ -87,6 +87,8 @@ HireMind is an AI-powered recruitment platform. The `hiremind_web` app is built 
 ### Component extraction
 - Reusable UI units (e.g. `RoleCard`) live in a **subfolder** of the module they belong to: `modules/auth/components/role-selection/RoleCard.tsx`.
 - A module file that exceeds ~150 lines should be split: extract sub-components into the module subfolder, keep the page file as a thin orchestrator.
+- Cross-page primitives (icons, form fields, formatters) belong in a module-level `shared/` folder; cross-page UI (stat tiles, badges, charts) in a module-level `components/` folder — **never redefine them inline per page**.
+- **Worked example — `modules/company/jobs/`:** each page (`JobsList`, `EditJobPage`, `JobApplicationsPage`, `CompareCandidatesPage`, `PublishSuccess`) is a thin orchestrator. Shared: `shared/icons.tsx` (one icon set, `size`/`className` props), `shared/forms.tsx`, `shared/format.ts`; `components/` (`StatCard`, `FilterSelect`, `JobStatusBadge`, `Donut`) + page-local folders (`jobs-list/`, `edit-job/`, …) for that page's cards/rows/rails + mock `data.ts`. Pages with a genuinely distinct icon language (Compare, PublishSuccess) keep it local rather than forcing it into the shared set.
 
 ### Layout & scroll rules
 - Full-page auth/registration screens use `h-screen flex flex-col overflow-hidden` on the root wrapper.

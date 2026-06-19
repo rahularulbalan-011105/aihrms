@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Pagination } from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 3;
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Types — shaped to match a future backend response so wiring is a drop-in swap.
@@ -77,6 +80,7 @@ const TABS = [
 /* ─── Page ───────────────────────────────────────────────────────────────────── */
 export default function MyApplicationsPage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]["key"]>("all");
+  const [page, setPage] = useState(1);
 
   const visible = APPLICATIONS.filter((a) => {
     if (activeTab === "all") return true;
@@ -85,14 +89,19 @@ export default function MyApplicationsPage() {
     return a.bucket === "withdrawn";
   });
 
+  const totalPages = Math.ceil(visible.length / PAGE_SIZE);
+  const pageItems = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
-    <div className="flex flex-col xl:flex-row gap-6 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* ── Centre column ── */}
       <div className="flex-1 min-w-0 space-y-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-display font-extrabold text-[22px] text-ink-900">My Applications</h1>
+            <h1 className="font-display font-extrabold text-[22px] text-ink-900 inline-flex items-center gap-2">
+              <span className="text-brand-600"><BriefcaseIcon /></span> My Applications
+            </h1>
             <p className="text-[13.5px] text-ink-500 mt-0.5">Track and manage all your job applications in one place.</p>
           </div>
           <button className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors">
@@ -125,7 +134,7 @@ export default function MyApplicationsPage() {
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => { setActiveTab(tab.key); setPage(1); }}
                 className={`px-3.5 py-2.5 text-[13px] font-semibold border-b-2 -mb-px transition-colors ${
                   activeTab === tab.key
                     ? "border-brand-600 text-brand-700"
@@ -147,17 +156,16 @@ export default function MyApplicationsPage() {
           {visible.length === 0 ? (
             <p className="text-center text-ink-400 text-[13px] py-12">No applications in this category yet.</p>
           ) : (
-            visible.map((app) => <ApplicationCard key={app.id} application={app} />)
+            pageItems.map((app) => <ApplicationCard key={app.id} application={app} />)
           )}
         </div>
 
-        {/* Load more */}
-        <div className="text-center pt-1">
-          <button className="text-[13.5px] text-brand-600 font-semibold hover:text-brand-800 transition-colors inline-flex items-center gap-1.5">
-            Load More Applications
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
-          </button>
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center pt-1">
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </div>
+        )}
 
         {/* Secure note */}
         <div className="flex items-center justify-center gap-1.5 text-[12px] text-ink-400 pt-1">
@@ -166,7 +174,7 @@ export default function MyApplicationsPage() {
       </div>
 
       {/* ── Right rail ── */}
-      <aside className="w-full xl:w-[300px] shrink-0 space-y-4 hidden xl:block">
+      <aside className="w-full lg:w-[300px] shrink-0 space-y-4 hidden lg:block">
         <ApplicationInsightsPanel />
         <RecruiterActivityPanel />
         <UpcomingInterviewsPanel />

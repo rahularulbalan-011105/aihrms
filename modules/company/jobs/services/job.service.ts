@@ -10,6 +10,12 @@ export interface JobApiResponse {
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "EXPIRED";
   openings: number;
   workplaceLocation: string | null;
+  experienceMinYears: number | null;
+  experienceMaxYears: number | null;
+  salaryType: string | null;
+  currency: string | null;
+  annualCtc: number | null;
+  skills: { name: string; minExperience: number; unit: string; mandatory: boolean }[];
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -19,6 +25,64 @@ export interface JobCountsResponse {
   total: number;
   published: number;
   drafts: number;
+}
+
+/** Full backend JobDetailResponse — used to prefill the Edit Job form. */
+export interface JobFullDetail {
+  id: string;
+  // details
+  title: string;
+  roleCategory: string | null;
+  department: string | null;
+  employmentType: string | null;
+  openings: number;
+  workplaceLocation: string | null;
+  workMode: string | null;
+  startingDate: string | null;
+  description: string | null;
+  experienceMinYears: number | null;
+  experienceMaxYears: number | null;
+  noticePeriod: string | null;
+  educationQualification: string | null;
+  industry: string | null;
+  jobShift: string | null;
+  applicationDeadline: string | null;
+  jobExpiry: string | null;
+  confidential: boolean;
+  // requirements
+  requirementExpYears: number | null;
+  requirementExpUnit: string | null;
+  seniorityLevel: string | null;
+  responsibilities: string | null;
+  skills: { name: string; minExperience: number; unit: string; mandatory: boolean }[];
+  // compensation
+  salaryType: string | null;
+  currency: string | null;
+  annualCtc: number | null;
+  basicPay: number | null;
+  hra: number | null;
+  specialAllowance: number | null;
+  otherAllowances: number | null;
+  variablePay: number | null;
+  joiningBonus: number | null;
+  benefits: string[];
+  otherBenefits: string | null;
+  // preferences
+  workArrangement: string | null;
+  prefWorkLocation: string | null;
+  workingHours: string | null;
+  timeZone: string | null;
+  genderPreference: string | null;
+  diversityHiring: string | null;
+  equalOpportunity: boolean;
+  additionalPreferences: string | null;
+  employmentTypePrefs: string[];
+  noticePeriodPrefs: string[];
+  // lifecycle
+  status: string;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Subset of the backend JobDetailResponse used by the published-success summary. */
@@ -187,6 +251,92 @@ export async function fetchJob(id: string): Promise<JobDetail> {
   const json = await res.json().catch(() => null);
   if (!res.ok) throw new Error(json?.message ?? `Failed to load job (${res.status})`);
   return json.data as JobDetail;
+}
+
+/** GET /company/jobs/{id} — full detail for prefilling the Edit Job form. */
+export async function fetchJobFull(id: string): Promise<JobFullDetail> {
+  const res = await fetch(`${API.COMPANY}/company/jobs/${id}`, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message ?? `Failed to load job (${res.status})`);
+  return json.data as JobFullDetail;
+}
+
+/** PUT /company/jobs/{id} — update an existing job (ownership-guarded). */
+export async function updateJob(id: string, draft: JobDraft): Promise<{ id: string }> {
+  const res = await fetch(`${API.COMPANY}/company/jobs/${id}`, {
+    method: "PUT",
+    headers: jsonHeaders(),
+    body: JSON.stringify(draftToRequest(draft)),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message ?? `Failed to update job (${res.status})`);
+  return { id: json.data.id as string };
+}
+
+/** Maps a backend JobFullDetail back into the in-memory JobDraft used by the form. */
+export function responseToDraft(d: JobFullDetail): JobDraft {
+  const numStr = (n: number | null) => (n == null ? "" : String(n));
+  return {
+    details: {
+      title: d.title ?? "",
+      roleCategory: d.roleCategory ?? "",
+      department: d.department ?? "",
+      employmentType: d.employmentType ?? "",
+      openings: d.openings ?? 1,
+      workplaceLocation: d.workplaceLocation ?? "",
+      startingDate: d.startingDate ?? "",
+      workMode: (d.workMode as JobDraft["details"]["workMode"]) ?? "On-site",
+      description: d.description ?? "",
+      experienceRange: "",
+      experienceMin: numStr(d.experienceMinYears),
+      experienceMax: numStr(d.experienceMaxYears),
+      noticePeriod: d.noticePeriod ?? "",
+      educationQualification: d.educationQualification ?? "",
+      industry: d.industry ?? "",
+      jobShift: d.jobShift ?? "",
+      applicationDeadline: d.applicationDeadline ?? "",
+      jobExpiry: d.jobExpiry ?? "",
+      confidential: d.confidential ? "Yes" : "No",
+    },
+    requirements: {
+      minExperience: d.requirementExpYears ?? 0,
+      experienceUnit: d.requirementExpUnit ?? "Years",
+      experienceLevel: d.seniorityLevel ?? "",
+      responsibilities: d.responsibilities ?? "",
+      skills: (d.skills ?? []).map((s, i) => ({ id: String(i + 1), name: s.name, years: s.minExperience })),
+    },
+    compensation: {
+      salaryType: "Fixed CTC",
+      currency: d.currency ?? "",
+      annualCtc: numStr(d.annualCtc),
+      salaryMin: "",
+      salaryMax: "",
+      basicPay: numStr(d.basicPay),
+      hra: numStr(d.hra),
+      specialAllowance: numStr(d.specialAllowance),
+      otherAllowances: numStr(d.otherAllowances),
+      variablePay: numStr(d.variablePay),
+      joiningBonus: numStr(d.joiningBonus),
+      benefits: d.benefits ?? [],
+      otherBenefits: d.otherBenefits ?? "",
+    },
+    preferences: {
+      workArrangement: (d.workArrangement as JobDraft["preferences"]["workArrangement"]) ?? "On-site",
+      workLocation: d.prefWorkLocation ?? "",
+      jobShift: d.jobShift ?? "",
+      workingHours: d.workingHours ?? "",
+      timeZone: d.timeZone ?? "",
+      seniority: d.seniorityLevel ?? "",
+      employmentTypes: d.employmentTypePrefs ?? [],
+      noticePeriods: d.noticePeriodPrefs ?? [],
+      genderPreference: d.genderPreference ?? "",
+      diversityHiring: d.diversityHiring ?? "",
+      equalOpportunity: d.equalOpportunity,
+      additionalPreferences: d.additionalPreferences ?? "",
+    },
+  };
 }
 
 /** GET /company/jobs/counts — totals for the dashboard stat card. */

@@ -67,9 +67,9 @@ export default function CompanySidebar() {
       </div>
 
       <div className="border-t border-ink-100 px-4 py-3">
-        <button className="flex items-center gap-2.5 text-[13px] text-ink-600 hover:text-ink-900 transition">
-          <HelpIcon /> Help & Support
-        </button>
+        <a href="mailto:contact@arvantra-ai.com" className="flex items-center gap-2.5 text-[13px] text-ink-600 hover:text-ink-900 transition break-all">
+          <HelpIcon /> contact@arvantra-ai.com
+        </a>
       </div>
     </aside>
   );
