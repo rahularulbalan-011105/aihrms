@@ -40,6 +40,7 @@ export interface CompensationData {
   annualCtc: string;
   salaryMin: string;
   salaryMax: string;
+  fixedPay: string;          // frontend-only display (not sent to backend)
   basicPay: string;
   hra: string;
   specialAllowance: string;
@@ -113,6 +114,7 @@ export const EMPTY_JOB: JobDraft = {
     annualCtc: "12,00,000",
     salaryMin: "",
     salaryMax: "",
+    fixedPay: "10,00,000",
     basicPay: "6,00,000",
     hra: "2,40,000",
     specialAllowance: "1,60,000",

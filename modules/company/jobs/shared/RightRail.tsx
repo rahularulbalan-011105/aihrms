@@ -69,7 +69,7 @@ export default function RightRail({ current, data, tips, showJobSummary = true, 
           <SummaryItem label="Location"         value={data.details.workplaceLocation} />
           <SummaryItem label="Employment Type"  value={data.details.employmentType} />
           <SummaryItem label="Experience"       value={data.details.experienceMin && data.details.experienceMax ? `${data.details.experienceMin} - ${data.details.experienceMax} Years` : data.details.experienceRange} />
-          <SummaryItem label="Salary Range"     value={data.compensation.annualCtc ? `₹ ${data.compensation.annualCtc}` : ""} />
+          <SummaryItem label="Salary Range"     value={salaryRangeText(data)} />
           <SummaryItem label="Openings"         value={String(data.details.openings ?? "")} />
           {current < 5 && (
             <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] text-ink-500">
@@ -80,6 +80,17 @@ export default function RightRail({ current, data, tips, showJobSummary = true, 
       )}
     </aside>
   );
+}
+
+/** Salary Range for the Job Summary — Salary Range type → "₹ min – max", else the fixed CTC. */
+function salaryRangeText(data: JobDraft): string {
+  const c = data.compensation;
+  const symbol = c.currency?.includes("$") ? "$" : c.currency?.includes("€") ? "€" : "₹";
+  if (c.salaryType === "Salary Range") {
+    if (c.salaryMin || c.salaryMax) return `${symbol} ${c.salaryMin || "?"} – ${c.salaryMax || "?"}`;
+    return "";
+  }
+  return c.annualCtc ? `${symbol} ${c.annualCtc}` : "";
 }
 
 function SummaryItem({ label, value }: { label: string; value: string }) {

@@ -45,7 +45,7 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
 
       <div className="mb-6"><JobStepper current={4} /></div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
         <div className="space-y-4">
           {/* Job Details */}
           <SectionCard icon={<BriefIcon />} title="Job Details" onEdit={() => onEdit(1)}>
@@ -70,12 +70,12 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
           {/* Requirements */}
           <SectionCard icon={<UsersIcon />} title="Requirements" onEdit={() => onEdit(2)} iconBg="bg-green-50 text-green-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
-              <Field label="Skills"            value={data.requirements.skills.slice(0, 4).map((s) => s.name).join(", ") || "—"} />
-              <Field label="Mandatory Skills"  value={data.requirements.skills.slice(0, 3).map((s) => `${s.name} (${s.years}+ Yrs)`).join(", ") || "—"} />
-              <Field label="Preferred Skills"  value="Microservices, Docker, Kubernetes" />
-              <Field label="Experience"        value={`${data.requirements.minExperience} - ${data.requirements.minExperience + 3} Years Overall Experience`} />
-              <Field label="Education"         value={data.details.educationQualification || "Bachelor's Degree"} />
-              <Field label="Certifications"    value="AWS Certified Developer (Preferred)" />
+              <Field label="Skills"               value={data.requirements.skills.map((s) => s.name).filter(Boolean).join(", ") || "—"} />
+              <Field label="Skills (Experience)"  value={data.requirements.skills.filter((s) => s.name.trim()).map((s) => `${s.name} (${s.years}+ Yrs)`).join(", ") || "—"} />
+              <Field label="Experience Level"     value={data.requirements.experienceLevel || "—"} />
+              <Field label="Minimum Experience"   value={`${data.requirements.minExperience} ${data.requirements.experienceUnit}`} />
+              <Field label="Experience Range"     value={data.details.experienceMin && data.details.experienceMax ? `${data.details.experienceMin} - ${data.details.experienceMax} Years` : (data.details.experienceRange || "—")} />
+              <Field label="Education"            value={data.details.educationQualification || "—"} />
             </div>
           </SectionCard>
 
@@ -83,11 +83,15 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
           <SectionCard icon={<RupeeIcon />} title="Compensation" onEdit={() => onEdit(3)} iconBg="bg-orange-50 text-orange-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
               <Field label="Salary Type"        value={data.compensation.salaryType === "Fixed CTC" ? "Annual (CTC)" : data.compensation.salaryType} />
-              <Field label="Salary Range"       value={`₹ ${data.compensation.annualCtc} – ₹ 18,00,000 per annum`} />
-              <Field label="Other Components"   value={`Variable Pay (₹ ${data.compensation.variablePay}), Performance Bonus (₹ 50,000)`} />
-              <Field label="Currency"           value="INR" />
-              <Field label="Total CTC"          value={`₹ ${data.compensation.annualCtc} per annum`} />
-              <Field label="Additional Benefits" value="Health Insurance, PF, Flexible Working, Paid Time Off" />
+              <Field label={data.compensation.salaryType === "Salary Range" ? "Salary Range" : "Total CTC"}
+                     value={data.compensation.salaryType === "Salary Range"
+                       ? (data.compensation.salaryMin || data.compensation.salaryMax
+                           ? `₹ ${data.compensation.salaryMin || "—"} – ₹ ${data.compensation.salaryMax || "—"} per annum`
+                           : "—")
+                       : (data.compensation.annualCtc ? `₹ ${data.compensation.annualCtc} per annum` : "—")} />
+              <Field label="Fixed Pay"          value={data.compensation.fixedPay ? `₹ ${data.compensation.fixedPay}` : "—"} />
+              <Field label="Variable Pay"       value={data.compensation.variablePay ? `₹ ${data.compensation.variablePay}` : "—"} />
+              <Field label="Currency"           value={data.compensation.currency || "—"} />
             </div>
           </SectionCard>
 
@@ -108,16 +112,28 @@ export default function Step5ReviewPublish({ data, onBack, onEdit, onPublish, on
           </div>
 
           {/* Bottom buttons */}
-          <div className="flex items-center pt-3">
+          <div className="flex items-center justify-between pt-3">
             <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2">
               <ArrowLeft /> Back
             </button>
+            <div className="flex items-center gap-2">
+              <button onClick={onSaveDraft} disabled={busy}
+                className={`px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13px] font-semibold hover:bg-ink-100 transition ${busy ? "opacity-50 cursor-not-allowed" : ""}`}>
+                {savingDraft ? "Saving…" : "Save Draft"}
+              </button>
+              <button onClick={onPublish} disabled={!confirm || busy}
+                className={`px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2 ${confirm && !busy ? "" : "opacity-50 cursor-not-allowed"}`}
+                style={{ background: "var(--gradient-brand)" }}>
+                {publishing ? "Submitting…" : "Submit Job"} <PaperPlane />
+              </button>
+            </div>
           </div>
         </div>
 
         <RightRail
           current={4}
           data={data}
+          showProgress={false}
           tips={{
             title: "Tips for a great job post",
             tips: ["All details look good!", "Review one last time for accuracy", "An attractive job post gets better candidates"],

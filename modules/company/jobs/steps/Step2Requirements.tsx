@@ -3,6 +3,8 @@
 import JobStepper from "../shared/JobStepper";
 import RightRail from "../shared/RightRail";
 import type { JobDraft, RequirementsData, SkillRow } from "../shared/types";
+import { useConfirmDelete } from "@/modules/auth/components/candidate-reg/shared/hooks";
+import { ConfirmDialog, Tooltip } from "@/modules/auth/components/candidate-reg/shared/ui";
 
 interface Props {
   data: JobDraft;
@@ -21,19 +23,30 @@ const SKILL_COLORS: Record<string, string> = {
 
 export default function Step2Requirements({ data, onChange, onBack, onContinue }: Props) {
   const r = data.requirements;
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
   const set = <K extends keyof RequirementsData>(k: K, v: RequirementsData[K]) =>
     onChange({ ...data, requirements: { ...r, [k]: v } });
 
   const setSkillYears = (id: string, years: number) =>
     set("skills", r.skills.map((s) => (s.id === id ? { ...s, years: Math.max(0, years) } : s)));
+  const setSkillName = (id: string, name: string) =>
+    set("skills", r.skills.map((s) => (s.id === id ? { ...s, name } : s)));
   const removeSkill = (id: string) => set("skills", r.skills.filter((s) => s.id !== id));
+  const confirmRemoveSkill = (skill: SkillRow) =>
+    triggerDelete(`Delete "${skill.name.trim() || "this skill"}"?`, async () => {
+      resetConfirm();
+      removeSkill(skill.id);
+    });
   const addSkill = () => {
     const id = `${Date.now()}`;
-    set("skills", [...r.skills, { id, name: "New Skill", years: 1 }]);
+    set("skills", [...r.skills, { id, name: "", years: 1 }]);
   };
 
   return (
     <div className="max-w-[1400px] mx-auto">
+      {confirm.open && (
+        <ConfirmDialog label={confirm.label} onConfirm={confirm.onConfirm} onCancel={resetConfirm} />
+      )}
       <div className="flex items-start justify-between gap-4 mb-4">
         <button onClick={onBack} className="px-3.5 py-2 rounded-lg border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-1.5">
           <ArrowLeft /> Back
@@ -51,7 +64,7 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
 
       <div className="mb-6"><JobStepper current={2} /></div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
         <div className="space-y-4">
           {/* Job Requirements */}
           <Card>
@@ -110,14 +123,20 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
               </div>
               <ul className="divide-y divide-ink-100">
                 {r.skills.map((s) => (
-                  <SkillRowItem key={s.id} skill={s} onYears={(y) => setSkillYears(s.id, y)} onRemove={() => removeSkill(s.id)} />
+                  <SkillRowItem key={s.id} skill={s} onYears={(y) => setSkillYears(s.id, y)} onName={(name) => setSkillName(s.id, name)} onDelete={() => confirmRemoveSkill(s)} />
                 ))}
+                {r.skills.length === 0 && (
+                  <li className="px-3 py-6 text-center text-[12.5px] text-ink-400">No skills added yet. Click &quot;+ Add Skill&quot; to begin.</li>
+                )}
               </ul>
             </div>
           </Card>
 
-          <div className="flex items-center pt-4">
+          <div className="flex items-center justify-between pt-4">
             <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2"><ArrowLeft /> Back</button>
+            <button onClick={onContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+              Next: Compensation <ArrowRight />
+            </button>
           </div>
         </div>
 
@@ -135,15 +154,22 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
   );
 }
 
-function SkillRowItem({ skill, onYears, onRemove }: { skill: SkillRow; onYears: (y: number) => void; onRemove: () => void }) {
+function SkillRowItem({ skill, onYears, onName, onDelete }: { skill: SkillRow; onYears: (y: number) => void; onName: (name: string) => void; onDelete: () => void }) {
   return (
     <li className="grid grid-cols-[36px_1fr_220px_120px_60px] gap-2 px-3 py-2.5 items-center">
       <span className="text-ink-300 cursor-grab">⋮⋮</span>
       <div className="flex items-center gap-2.5">
-        <span className={`w-8 h-8 rounded-md font-bold text-[11px] flex items-center justify-center ${SKILL_COLORS[skill.name] ?? "bg-brand-50 text-brand-700"}`}>
-          {skill.name.slice(0, 2).toUpperCase()}
+        <span className={`w-8 h-8 rounded-md font-bold text-[11px] flex items-center justify-center shrink-0 ${SKILL_COLORS[skill.name] ?? "bg-brand-50 text-brand-700"}`}>
+          {(skill.name.trim() || "?").slice(0, 2).toUpperCase()}
         </span>
-        <span className="text-[13px] font-semibold">{skill.name}</span>
+        <input
+          value={skill.name}
+          onChange={(e) => onName(e.target.value)}
+          placeholder="e.g. React.js"
+          aria-label="Skill name"
+          autoFocus={skill.name === ""}
+          className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-transparent hover:border-ink-200 focus:border-brand-400 text-[13px] font-semibold focus:outline-none placeholder:font-normal placeholder:text-ink-400"
+        />
       </div>
       <div className="flex items-center border border-ink-200 rounded-md">
         <button onClick={() => onYears(skill.years - 1)} className="w-9 h-9 hover:bg-ink-100 text-ink-700">−</button>
@@ -151,7 +177,9 @@ function SkillRowItem({ skill, onYears, onRemove }: { skill: SkillRow; onYears: 
         <button onClick={() => onYears(skill.years + 1)} className="w-9 h-9 hover:bg-ink-100 text-ink-700">+</button>
       </div>
       <span className="text-[13px] text-ink-700">Years</span>
-      <button onClick={onRemove} className="text-ink-400 hover:text-red-500 transition w-8 h-8 grid place-items-center"><TrashIcon /></button>
+      <Tooltip label="Delete skill">
+        <button onClick={onDelete} aria-label="Delete skill" className="text-ink-400 hover:text-red-500 transition w-8 h-8 grid place-items-center"><TrashIcon /></button>
+      </Tooltip>
     </li>
   );
 }

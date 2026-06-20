@@ -313,6 +313,7 @@ export function responseToDraft(d: JobFullDetail): JobDraft {
       annualCtc: numStr(d.annualCtc),
       salaryMin: "",
       salaryMax: "",
+      fixedPay: "",
       basicPay: numStr(d.basicPay),
       hra: numStr(d.hra),
       specialAllowance: numStr(d.specialAllowance),

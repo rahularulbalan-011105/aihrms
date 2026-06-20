@@ -601,7 +601,15 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 
 `Step1JobDetails` validates required fields (`title`, `workplaceLocation`, `description`) before advancing — `roleCategory` is **optional**. Both "Next: Requirements" buttons call `handleContinue()`. `CompanySidebar` "Jobs" link points to `/company/jobs` (the list), which has a "Post New Job" CTA → `/company/jobs/new`.
 
-**Wizard is 4 steps** (`StepNum = 1 | 2 | 3 | 4`): Step1 Details → Step2 Requirements → Step3 Compensation → Step4 Review (rendered by `Step5ReviewPublish.tsx`, kept under its original filename). The **Preferences step was removed** (`Step4Preferences.tsx` deleted); `JobDraft.preferences` still exists with `EMPTY_JOB` defaults and is still submitted by `draftToRequest`. `RightRail` takes `showProgress` / `showJobSummary` props (both hidden on Step 1/2 as configured). Salary Range salary type shows Min/Max inputs (`salaryMin`/`salaryMax` — frontend-only, not sent to backend).
+**Wizard is 4 steps** (`StepNum = 1 | 2 | 3 | 4`): Step1 Details → Step2 Requirements → Step3 Compensation → Step4 Review (rendered by `Step5ReviewPublish.tsx`, kept under its original filename). The **Preferences step was removed** (`Step4Preferences.tsx` deleted); `JobDraft.preferences` still exists with `EMPTY_JOB` defaults and is still submitted by `draftToRequest`. `RightRail` takes `showProgress` / `showJobSummary` props; **"Job Posting Progress" is hidden on every step** (`showProgress={false}` on Steps 1–4). Salary Range salary type shows Min/Max inputs (`salaryMin`/`salaryMax`); **Fixed Pay** is editable in the Step 3 centre box via `fixedPay` — all three (`salaryMin`/`salaryMax`/`fixedPay`) are **frontend-only**, not sent to backend.
+
+**Wizard step conventions (current):**
+- Every step has the primary advance button **both top-right and bottom-right** (Step1 "Next: Requirements", Step2 "Next: Compensation", Step3 "Next: Review", Step4 "Save Draft" + "Submit Job"); footers use `justify-between` (Back/Cancel left). Step 1 **Cancel → `/company/jobs`**.
+- All step grids are `grid-cols-1 lg:grid-cols-[1fr_280px|320px]` so the right rail shows from `lg` (≥1024px).
+- `RightRail` **Job Summary** Salary Range is derived (`salaryRangeText`): `₹ min – max` for Salary-Range type, else the fixed `annualCtc`, currency-aware.
+- **Step 2 skills:** "+ Add Skill" appends an editable, auto-focused skill-name row (avatar updates live); the delete icon uses the candidate `Tooltip` + `useConfirmDelete`/`ConfirmDialog` (imported from `@/modules/auth/components/candidate-reg/shared/{hooks,ui}` — the established cross-module reuse for these primitives).
+- **Step 4 review** populates Requirements + Compensation dynamically from the draft with `—` fallbacks (no fabricated mock); no "Additional Benefits" row.
+- **Publish Success** rail: "Copy Link" copies `window.location.href` (clipboard) with a "Link Copied!" state.
 
 > **Do not** add a separate preference "job shift" column — `jobShift` is a Step 1 field that maps to `jobs.job_shift`. Working hours / time zone (from `JobDraft.preferences` defaults) are persisted.
 

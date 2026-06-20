@@ -47,7 +47,7 @@ export default function PublishSuccess({ jobId }: { jobId?: string }) {
 
   return (
     <div className="px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
         <div className="space-y-4">
           {/* Hero success */}
           <div className="bg-white border border-ink-100 rounded-xl px-6 py-7 flex flex-col md:flex-row items-center gap-6">

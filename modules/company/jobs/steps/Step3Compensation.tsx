@@ -40,7 +40,7 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
       {/* IMPORTANT: 5-step stepper (the mockup was missing Preferences — this restores it) */}
       <div className="mb-6"><JobStepper current={3} /></div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
         <div className="space-y-4">
           {/* Compensation Details */}
           <Card>
@@ -92,16 +92,15 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
                   <RupeeInput value={c.annualCtc} onChange={(v) => set("annualCtc", v)} />
                 </div>
               )}
-              <div className="bg-ink-100/40 border border-ink-100 rounded-lg p-3 flex items-center gap-6">
+              <div className="bg-ink-100/40 border border-ink-100 rounded-lg p-3 flex items-center gap-4">
                 <div className="flex-1">
-                  <div className="text-[11.5px] text-ink-500 mb-0.5">Fixed Pay</div>
-                  <div className="text-[14px] font-bold text-green-600">₹ 10,00,000 <span className="text-[11px] font-semibold opacity-70">(83.33%)</span></div>
+                  <div className="text-[11.5px] text-ink-500 mb-1">Fixed Pay</div>
+                  <RupeeInput value={c.fixedPay} onChange={(v) => set("fixedPay", v)} />
                 </div>
                 <div className="flex-1">
-                  <div className="text-[11.5px] text-ink-500 mb-0.5">Variable Pay</div>
-                  <div className="text-[14px] font-bold text-brand-700">₹ 2,00,000 <span className="text-[11px] font-semibold opacity-70">(16.67%)</span></div>
+                  <div className="text-[11.5px] text-ink-500 mb-1">Variable Pay</div>
+                  <RupeeInput value={c.variablePay} onChange={(v) => set("variablePay", v)} />
                 </div>
-                <button className="text-brand-700 hover:bg-white rounded-md w-9 h-9 grid place-items-center"><EditIcon /></button>
               </div>
             </div>
           </Card>
@@ -124,40 +123,18 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
             </div>
           </Card>
 
-          <div className="flex items-center pt-4">
+          <div className="flex items-center justify-between pt-4">
             <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition inline-flex items-center gap-2">
               <ArrowLeft /> Back
+            </button>
+            <button onClick={onContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+              Next: Review <ArrowRight />
             </button>
           </div>
         </div>
 
-        {/* RIGHT — custom Compensation Summary rail */}
+        {/* RIGHT — Compensation Tips, then Compensation Summary below it */}
         <aside className="w-full flex flex-col gap-3">
-          <div className="rounded-xl border border-ink-100 p-4 bg-white">
-            <h3 className="font-display font-bold text-[14px] mb-3">Compensation Summary</h3>
-            <div className="rounded-lg bg-brand-50/60 px-3.5 py-3 border border-brand-100 mb-3">
-              <div className="text-[18px] font-extrabold text-ink-900">₹ {c.annualCtc || "0"} <span className="text-[12px] font-medium text-ink-500">/ Annual CTC</span></div>
-              <span className="mt-1 inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700">{c.salaryType}</span>
-            </div>
-            <div className="flex items-center justify-between text-[12.5px] py-1.5">
-              <span className="text-ink-700">Fixed Pay</span><span className="text-green-600 font-bold">₹ 10,00,000 <span className="opacity-70">(83.33%)</span></span>
-            </div>
-            <div className="flex items-center justify-between text-[12.5px] py-1.5">
-              <span className="text-ink-700">Variable Pay</span><span className="text-brand-700 font-bold">₹ 2,00,000 <span className="opacity-70">(16.67%)</span></span>
-            </div>
-            <div className="mt-3 pt-3 border-t border-ink-100">
-              <div className="text-[12px] font-bold text-ink-500 mb-1">Currency</div>
-              <div className="text-[12.5px] font-semibold">{c.currency}</div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-ink-100">
-              <div className="text-[12px] font-bold text-ink-500 mb-2">Additional Benefits</div>
-              <div className="flex flex-wrap gap-1.5">
-                {c.benefits.slice(0, 3).map((b) => <span key={b} className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 grid place-items-center text-[14px]">●</span>)}
-                {c.benefits.length > 3 && <span className="w-8 h-8 rounded-full bg-ink-100 text-ink-700 grid place-items-center text-[11px] font-bold">+{c.benefits.length - 3}</span>}
-              </div>
-            </div>
-          </div>
-
           <div className="rounded-xl border border-ink-100 p-4 bg-white">
             <h3 className="font-display font-bold text-[14px] mb-2 inline-flex items-center gap-1.5"><BulbIcon /> Compensation Tips</h3>
             <ul className="space-y-1.5">
@@ -169,6 +146,28 @@ export default function Step3Compensation({ data, onChange, onBack, onContinue }
                 <li key={t} className="flex items-start gap-2 text-[12px] text-ink-700"><span className="mt-1 text-green-600">✓</span><span>{t}</span></li>
               ))}
             </ul>
+          </div>
+
+          <div className="rounded-xl border border-ink-100 p-4 bg-white">
+            <h3 className="font-display font-bold text-[14px] mb-3">Compensation Summary</h3>
+            <div className="rounded-lg bg-brand-50/60 px-3.5 py-3 border border-brand-100 mb-3">
+              {c.salaryType === "Salary Range" ? (
+                <div className="text-[18px] font-extrabold text-ink-900">₹ {c.salaryMin || "0"} <span className="text-[12px] font-medium text-ink-500">/ Min (Annual)</span></div>
+              ) : (
+                <div className="text-[18px] font-extrabold text-ink-900">₹ {c.annualCtc || "0"} <span className="text-[12px] font-medium text-ink-500">/ Annual CTC</span></div>
+              )}
+              <span className="mt-1 inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700">{c.salaryType}</span>
+            </div>
+            <div className="flex items-center justify-between text-[12.5px] py-1.5">
+              <span className="text-ink-700">Fixed Pay</span><span className="text-green-600 font-bold">₹ {c.fixedPay || "0"}</span>
+            </div>
+            <div className="flex items-center justify-between text-[12.5px] py-1.5">
+              <span className="text-ink-700">Variable Pay</span><span className="text-brand-700 font-bold">₹ {c.variablePay || "0"}</span>
+            </div>
+            <div className="mt-3 pt-3 border-t border-ink-100">
+              <div className="text-[12px] font-bold text-ink-500 mb-1">Currency</div>
+              <div className="text-[12.5px] font-semibold">{c.currency}</div>
+            </div>
           </div>
         </aside>
       </div>
@@ -205,7 +204,7 @@ function RupeeInput({ value, onChange }: { value: string; onChange: (v: string) 
   return (
     <div className="relative">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 font-semibold">₹</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="0"
+      <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder="0"
         className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400" />
     </div>
   );
@@ -217,7 +216,7 @@ function PercentInput({ label, subLabel, value, onChange, pct }: { label: React.
       {subLabel && <p className="text-[11px] text-ink-500 -mt-1 mb-1.5">{subLabel}</p>}
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 font-semibold">₹</span>
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="0"
+        <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder="0"
           className="w-full pl-8 pr-16 py-2.5 rounded-lg border border-ink-200 text-[13.5px] focus:outline-none focus:border-brand-400" />
         {pct && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11.5px] text-ink-500 font-semibold">{pct}</span>}
       </div>

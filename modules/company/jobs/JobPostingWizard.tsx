@@ -50,7 +50,7 @@ export default function JobPostingWizard() {
 
   return (
     <div className="px-4 py-3 max-w-[1400px] mx-auto">
-      {step === 1 && <Step1JobDetails  data={draft} onChange={setDraft} onCancel={() => router.push("/company/dashboard")} onContinue={() => go(2)} />}
+      {step === 1 && <Step1JobDetails  data={draft} onChange={setDraft} onCancel={() => router.push("/company/jobs")} onContinue={() => go(2)} />}
       {step === 2 && <Step2Requirements data={draft} onChange={setDraft} onBack={() => go(1)} onContinue={() => go(3)} />}
       {step === 3 && <Step3Compensation data={draft} onChange={setDraft} onBack={() => go(2)} onContinue={() => go(4)} />}
       {step === 4 && (

@@ -53,7 +53,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
 
       <div className="mb-6"><JobStepper current={1} /></div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
         {/* MAIN */}
         <div className="space-y-4">
           {/* Job Details */}
@@ -154,8 +154,11 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
           </Card>
 
           {/* Footer buttons */}
-          <div className="flex items-center pt-4">
+          <div className="flex items-center justify-between pt-4">
             <button onClick={onCancel} className="px-5 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Cancel</button>
+            <button onClick={handleContinue} className="px-4 py-2.5 rounded-lg text-white text-[13px] font-semibold inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
+              Next: Requirements <ArrowRight />
+            </button>
           </div>
         </div>
 
@@ -163,6 +166,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
           current={1}
           data={data}
           showJobSummary={false}
+          showProgress={false}
           tips={{
             title: "Tips for a great job post",
             tips: ["Use a clear and specific job title", "Add key skills and experience", "Mention salary range (recommended)", "Highlight growth and benefits", "Keep the description concise and easy to read"],
