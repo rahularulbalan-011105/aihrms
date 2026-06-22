@@ -35,6 +35,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
   function validate(): boolean {
     const next: FieldErrors = {};
     if (!d.title.trim())             next.title = "Job title is required";
+    if (!d.clientId)                 next.clientId = "Client is required";
     if (!d.workplaceLocation.trim()) next.workplaceLocation = "Workplace location is required";
     if (!d.description.trim())       next.description = "Job description is required";
     setErrors(next);
@@ -70,7 +71,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
             <Header icon={<BriefIcon />} title="Job Details" subtitle="Provide the basic information about the job role." />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="Job Title" required value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. Senior Software Engineer" error={errors.title} />
-              <ClientSelect value={d.clientId} onChange={(v) => set("clientId", v)} clients={clients} />
+              <ClientSelect value={d.clientId} onChange={(v) => set("clientId", v)} clients={clients} error={errors.clientId} />
               <Select label="Job Role / Category (Optional)" value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} />
               <Select label="Department" value={d.department} onChange={(v) => set("department", v)} placeholder="Select department" options={DEPARTMENTS} />
             </div>
@@ -235,18 +236,19 @@ function Select({ label, required, value, onChange, placeholder, options, error 
     </div>
   );
 }
-function ClientSelect({ value, onChange, clients }: { value: string; onChange: (v: string) => void; clients: ClientSummaryResponse[] }) {
+function ClientSelect({ value, onChange, clients, error }: { value: string; onChange: (v: string) => void; clients: ClientSummaryResponse[]; error?: string }) {
   return (
     <div>
-      <Label>Client (Optional)</Label>
+      <Label required>Client</Label>
       <div className="relative">
         <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}
-          className={`w-full px-3 pr-9 py-2.5 rounded-lg border text-[13.5px] bg-white focus:outline-none border-ink-200 focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}>
-          <option value="">{clients.length ? "Select client" : "No clients available"}</option>
+          className={`w-full px-3 pr-9 py-2.5 rounded-lg border text-[13.5px] bg-white focus:outline-none ${error ? "border-red-400 focus:border-red-400" : "border-ink-200 focus:border-brand-400"} ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}>
+          <option value="" disabled>{clients.length ? "Select client" : "No clients available"}</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.clientName}</option>)}
         </select>
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
       </div>
+      <ErrorText error={error} />
     </div>
   );
 }

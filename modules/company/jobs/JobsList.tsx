@@ -8,6 +8,10 @@ import {
   type JobApiResponse,
   type JobCountsResponse,
 } from "./services/job.service";
+import {
+  fetchRecommendations,
+  type CandidateRecommendation,
+} from "./services/recommendations.service";
 import { Pagination } from "@/components/ui/Pagination";
 import {
   BriefIcon,
@@ -68,6 +72,9 @@ export default function JobsList() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  // Recommended candidates, scoped to the selected job (match-score ranked).
+  const [railLoading, setRailLoading] = useState(false);
+  const [recommended, setRecommended] = useState<CandidateRecommendation[]>([]);
   // Pending dropdown selections — edited freely; do NOT trigger a fetch.
   const [location, setLocation] = useState("");
   const [jobFunction, setJobFunction] = useState("");
@@ -142,20 +149,44 @@ export default function JobsList() {
       .slice(0, 5);
   })();
 
-  // Reset to the first page whenever the job set changes (tab switch / reload).
+  // When the job set changes (load / tab / filter), default-select the latest
+  // Active job (falling back to the most recent job), and jump to its page.
+  // Selection otherwise only changes on an explicit user click.
   useEffect(() => {
-    setPage(1);
-  }, [jobs]);
-
-  // Auto-select the first job on the current page when the selection isn't visible.
-  useEffect(() => {
-    if (pageJobs.length === 0) {
+    if (jobs.length === 0) {
       setSelectedJobId(null);
+      setPage(1);
       return;
     }
-    if (!pageJobs.some((job) => job.id === selectedJobId))
-      setSelectedJobId(pageJobs[0].id);
-  }, [jobs, page]); // eslint-disable-line react-hooks/exhaustive-deps
+    const defaultJob = jobs.find((job) => job.status === "PUBLISHED") ?? jobs[0];
+    setSelectedJobId(defaultJob.id);
+    setPage(Math.floor(jobs.indexOf(defaultJob) / PAGE_SIZE) + 1);
+  }, [jobs]);
+
+  // Load Recommended Candidates for the selected job; refresh on change.
+  useEffect(() => {
+    if (!selectedJobId) {
+      setRecommended([]);
+      return;
+    }
+    let active = true;
+    setRailLoading(true);
+    fetchRecommendations(selectedJobId, 4)
+      .then((list) => {
+        if (active) setRecommended(list);
+      })
+      .catch(() => {
+        if (active) setRecommended([]);
+      })
+      .finally(() => {
+        if (active) setRailLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedJobId]);
+
+  const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? null;
 
   const tabCount: Record<StatusTab, number> = {
     ALL: counts.total,
@@ -330,7 +361,7 @@ export default function JobsList() {
         {/* ── Right rail ── */}
         <aside className="w-full lg:w-[300px] shrink-0 space-y-4 hidden lg:block">
           <JobInsightsPanel counts={counts} />
-          <RecommendedCandidatesPanel />
+          <RecommendedCandidatesPanel job={selectedJob} candidates={recommended} loading={railLoading} />
           <TopSkillsPanel skills={topSkills} />
         </aside>
       </div>

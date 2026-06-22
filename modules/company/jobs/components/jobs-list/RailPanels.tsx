@@ -1,9 +1,15 @@
-import type { JobCountsResponse } from "../../services/job.service";
+import Link from "next/link";
+import type { JobApiResponse, JobCountsResponse } from "../../services/job.service";
+import type { CandidateRecommendation } from "../../services/recommendations.service";
 import { KebabIcon } from "../../shared/icons";
 import { Donut } from "../Donut";
 
-/* Right-rail panels for the Jobs list. Recommended candidates / top skills are
- * static demo data until those domains exist; Job Insights is live from counts. */
+/* Right-rail panels for the Jobs list. Job Insights is live from the global job
+ * counts; Recommended Candidates is scoped to the currently-selected job. */
+
+function PanelEmpty({ message }: { message: string }) {
+  return <p className="text-[12px] text-ink-400 py-2">{message}</p>;
+}
 
 export function JobInsightsPanel({ counts }: { counts: JobCountsResponse }) {
   const closed = Math.max(counts.total - counts.published - counts.drafts, 0);
@@ -26,31 +32,51 @@ export function JobInsightsPanel({ counts }: { counts: JobCountsResponse }) {
   );
 }
 
-const RECOMMENDED = [
-  { name: "Arjun Mehta", role: "Senior Software Engineer", match: 92 },
-  { name: "Neha Kulkarni", role: "Backend Developer", match: 88 },
-  { name: "Rohan Das", role: "Cloud Engineer", match: 85 },
-];
-
-export function RecommendedCandidatesPanel() {
+/** Top candidates for the selected job, ranked by the weighted match-score algorithm. */
+export function RecommendedCandidatesPanel({
+  job,
+  candidates,
+  loading,
+}: {
+  job: JobApiResponse | null;
+  candidates: CandidateRecommendation[];
+  loading: boolean;
+}) {
+  const initials = (name: string | null) =>
+    (name?.trim() || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  const matchColor = (score: number) =>
+    score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-ink-400";
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display font-bold text-[15px] text-ink-900">Recommended Candidates</h3>
-        <button className="text-[12px] text-brand-600 font-semibold hover:text-brand-800">View all</button>
+        {job && candidates.length > 0 && (
+          <Link href={`/company/jobs/${job.id}/applications`} className="text-[12px] text-brand-600 font-semibold hover:text-brand-800">View all</Link>
+        )}
       </div>
-      <ul className="space-y-3">
-        {RECOMMENDED.map((c) => (
-          <li key={c.name} className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-[12px] font-bold shrink-0">{c.name.split(" ").map((w) => w[0]).join("")}</span>
-            <div className="flex-1 leading-snug min-w-0">
-              <div className="text-[12.5px] font-semibold text-ink-900 truncate">{c.name}</div>
-              <div className="text-[11px] text-ink-500 truncate">{c.role}</div>
-            </div>
-            <span className="text-[11.5px] font-bold text-green-600 shrink-0">{c.match}% Match</span>
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <PanelEmpty message="Loading candidates…" />
+      ) : !job ? (
+        <PanelEmpty message="No active jobs to recommend candidates for." />
+      ) : candidates.length === 0 ? (
+        <PanelEmpty message="No matching candidates found yet." />
+      ) : (
+        <ul className="space-y-3">
+          {candidates.map((c) => (
+            <li key={c.userId} className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-[12px] font-bold shrink-0">{initials(c.fullName)}</span>
+              <div className="flex-1 leading-snug min-w-0">
+                <div className="text-[12.5px] font-semibold text-ink-900 truncate">{c.fullName ?? "Candidate"}</div>
+                <div className="text-[11px] text-ink-500 truncate">
+                  {c.currentRole ?? "—"}
+                  {c.skillsRequired > 0 && ` · ${c.skillsMatched}/${c.skillsRequired} skills`}
+                </div>
+              </div>
+              <span className={`text-[11.5px] font-bold shrink-0 ${matchColor(c.score)}`}>{c.score}% Match</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

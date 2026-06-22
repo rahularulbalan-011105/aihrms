@@ -32,6 +32,7 @@ export interface JobFullDetail {
   id: string;
   // details
   title: string;
+  clientId: string | null;
   roleCategory: string | null;
   department: string | null;
   employmentType: string | null;
@@ -138,6 +139,7 @@ function draftToRequest(draft: JobDraft) {
   return {
     details: {
       title: d.title.trim(),
+      clientId: orNull(d.clientId),
       roleCategory: orNull(d.roleCategory),
       department: orNull(d.department),
       employmentType: orNull(d.employmentType),
@@ -297,7 +299,7 @@ export function responseToDraft(d: JobFullDetail): JobDraft {
   return {
     details: {
       title: d.title ?? "",
-      clientId: "",
+      clientId: d.clientId ?? "",
       roleCategory: d.roleCategory ?? "",
       department: d.department ?? "",
       employmentType: d.employmentType ?? "",

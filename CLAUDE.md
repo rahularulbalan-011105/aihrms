@@ -594,6 +594,8 @@ Endpoints under `/company/jobs` — all require Bearer JWT + `accountType = RECR
 
 **Salary fields are `NUMERIC(14,2)` / `BigDecimal`** — the frontend stores formatted strings (`"12,00,000"`); `job.service.ts` strips commas to a number in `draftToRequest` before sending. Enum-like fields stored as `@Enumerated(EnumType.STRING)` → VARCHAR (matches `company_status`).
 
+**Job ↔ Client link** (`V6__add_job_client_id.sql`): `jobs.client_id UUID` → `clients(id)` `ON DELETE SET NULL` (nullable — legacy jobs have none). The post-job wizard **Step 1 Client dropdown is mandatory** (validated client-side, populated from `listClients`); `EditJobPage` also exposes it. `JobDetailsRequest.clientId` / `JobDetailResponse.clientId` carry it; `draftToRequest`/`responseToDraft` round-trip `details.clientId`. `JobService.resolveClientId` **ownership-guards** the selection (`ClientRepository.findByIdAndUserId`, throws `CLIENT_NOT_FOUND` for a client the recruiter doesn't own; null clears the link). Powers the live `ClientSummaryResponse.openJobs` count.
+
 **Frontend** — `modules/company/jobs/services/job.service.ts`:
 - `publishJob(draft)` → `POST /company/jobs/publish` → returns `{ id }`; wizard redirects to `/company/jobs/published?jobId=<id>`
 - `saveDraftJob(draft)` → `POST /company/jobs/draft`
@@ -639,6 +641,19 @@ The View Applications page (`/company/jobs/[id]/applications`) is wired end-to-e
 - **Frontend** — `services/applications.service.ts`: `fetchApplications(jobId, status?, page?, size?)`, `fetchApplicationCounts(jobId)`, `updateApplicationStatus(jobId, appId, status)`. `JobApplicationsPage` maps `ApplicationResponse` → the existing `Candidate` view-model (so `CandidateRow` is unchanged) and loads the header via `fetchJobFull`.
 - **Still mock / pending:** `matchScore` is a nullable column (no AI scoring → rows show 0%); the rail panels (Match Distribution, Application Summary donut, Detect Fake Profiles) and the fake-profile flag; filters/search/sort are UI-only; there is no candidate-facing "Apply" button yet (the `POST /apply` endpoint exists).
 
+### Job Recommendations API (`company_api` + `candidate_api`)
+Match-score candidate sourcing for a job — powers the Jobs list "Recommended Candidates" rail.
+
+| Method | Path | Account | Description |
+|---|---|---|---|
+| `GET` | `/company/jobs/{id}/recommendations?limit=` | RECRUITMENT_COMPANY | Top candidates for the job, ranked by weighted match score (ownership-guarded) |
+| `GET` | `/profile/pool?page=&size=` (candidate_api) | any auth | Scoreable candidate pool — `CandidateMatchProfile` per **SUBMITTED** profile (skills, location, education degrees, cert count, experience) |
+
+- **Eligible pool** = candidate_api profiles with status `SUBMITTED` (not just applicants). `company_api` `RecommendationService` fetches up to 200 via `CandidateClient.fetchCandidatePool` (forwards the recruiter's bearer token; degrades to empty), scores each, sorts desc, returns the top `limit` (default 5).
+- **Weighted score (0–100):** Skills **50%** (fraction of job's required skills the candidate has), Experience **20%** (`min(1, candidateYears / job.experienceMinYears)`), Location **10%** (current/preferred contains job `workplaceLocation`), Education **10%** (any degree matches `educationQualification`), Certifications **10%** (presence proxy — `certificationCount > 0`, since jobs have no required-cert field). Each missing job requirement scores 1.0 for that factor.
+- **Frontend** — `services/recommendations.service.ts` `fetchRecommendations(jobId, limit)` → `CandidateRecommendation[]`; `JobsList` calls it for the selected job and renders `RecommendedCandidatesPanel` (name, role, `N/M skills`, colour-coded match %). Replaces the previous applicants-based panel.
+- **Perf note:** the pool endpoint is N+1 per profile (skills/education/certs per row) — fine at size ≤200; batch or project if it grows.
+
 ### Clients API (`company_api`)
 Client organizations managed by a recruitment company. Endpoints under `/company/clients` — all require Bearer JWT + `accountType = RECRUITMENT_COMPANY` (enforced by `requireCompany()` in `ClientService`); scoped per recruiter via `user_id` (mirrors the jobs ownership guard).
 
@@ -651,7 +666,7 @@ Client organizations managed by a recruitment company. Endpoints under `/company
 
 - **Schema** (`V5__clients_table.sql`): `clients` table — `company_id` FK → `company(id)`, `user_id` (creating recruiter), Company Information / Primary Contact / Billing field groups, plus `account_manager` (nullable → "Unassigned") and `status` (`ClientStatus` = `ACTIVE | INACTIVE | PROSPECT`, default `ACTIVE`). Audit columns via `BaseEntity`.
 - **`Client` entity / `ClientRepository`** (`findByUserIdOrderByCreatedAtDesc`, `findByIdAndUserId`, `countByUserId`); **`ClientService`** has `requireCompany` + `requireProfile` guards like `JobService`.
-- **`ClientSummaryResponse.openJobs` is always `0`** — there's no `job ↔ client` link yet; `lastActivity` maps to `updatedAt`. Add a `jobs.client_id` FK to make `openJobs` a real count.
+- **`ClientSummaryResponse.openJobs` is a live count** of the client's `PUBLISHED` jobs (`JobRepository.countByClientIdAndStatus`, via the `jobs.client_id` FK — see Job ↔ Client link below); `lastActivity` maps to `updatedAt`.
 - **Frontend** — `modules/company/clients/services/client.service.ts`: `createClient(payload)` → `POST`; `listClients(page?, size?)` → `GET`. `AddClientPage.handleSave` maps the form to `ClientUpsertRequest`, shows saving + inline submit-error states, and redirects to `/company/clients` on success. `status`/`accountManager` aren't captured at creation (backend defaults `ACTIVE` / null). **`ClientsPage` is wired to `listClients` (fetches up to 100, `useRef` StrictMode guard); search, Industry/Status/Account-Manager filters, and pagination are all client-side (the list API has no query params yet). Stat tiles + the Client Overview donut reflect all clients; Recent Additions shows the 4 newest.**
 
 ### Pagination — shared component
@@ -800,5 +815,5 @@ Both `AddExperienceModal` and `PreferencesSection` fetch employment types from `
 16. **ESLint + Prettier** — code quality tooling
 17. ~~Company logo refresh after registration~~ — **DONE.** Logo is uploaded in Step 2 (right after the company row is created) and `uploadCompanyLogo()` now caches the presigned `logoUrl` via `setStoredCompanyLogoUrl()`, so `CompanyHeader` shows the logo on first dashboard load.
 18. **Company admin email/phone update** — the registered email/phone live on the user account; `saveCompanyProfile` doesn't update them and there's no user-update endpoint. "Change Number" on Step 2 return updates the display value only — add a `PUT /users/me` (or similar) to persist real changes.
-19. **Clients — remaining flows** — ~~Add Client API~~ **DONE**; ~~wire `ClientsPage` list~~ **DONE** (`listClients`, client-side search/filter/pagination). Still pending: server-side search/filter params on `GET /company/clients` (currently fetches up to 100 + filters client-side); a `job ↔ client` link (`jobs.client_id`) so `openJobs` is a real count; capture `status`/`accountManager` at creation; client edit/detail pages + the row "⋯" actions.
+19. **Clients — remaining flows** — ~~Add Client API~~ **DONE**; ~~wire `ClientsPage` list~~ **DONE**; ~~`job ↔ client` link / real `openJobs`~~ **DONE** (`jobs.client_id` FK, mandatory client on job posting — see Job ↔ Client link). Still pending: server-side search/filter params on `GET /company/clients` (currently fetches up to 100 + filters client-side); capture `status`/`accountManager` at creation; client edit/detail pages + the row "⋯" actions.
 20. **Enable scheduling** — `JobExpiryScheduler` is inert unless `@EnableScheduling` is present on `CompanyApiApplication`; confirm it's enabled (or move scheduling config to a dedicated `@Configuration`).

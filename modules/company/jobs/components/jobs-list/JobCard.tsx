@@ -12,8 +12,10 @@ export function JobCard({ job, selected, onSelect }: { job: JobApiResponse; sele
   return (
     <div
       onClick={onSelect}
-      className={`card p-4 relative transition-colors cursor-pointer ${selected ? "border-brand-400 ring-2 ring-brand-100" : "hover:border-brand-300"}`}
+      aria-current={selected ? "true" : undefined}
+      className={`card p-4 relative overflow-hidden transition-all cursor-pointer ${selected ? "border-brand-500 ring-2 ring-brand-200 bg-brand-50/50 shadow-sm" : "hover:border-brand-300"}`}
     >
+      {selected && <span className="absolute left-0 top-0 bottom-0 w-1 bg-brand-600" aria-hidden="true" />}
       <button className="absolute top-3.5 right-3.5 text-ink-300 hover:text-ink-600 transition-colors" aria-label="More options">
         <KebabIcon size={18} />
       </button>

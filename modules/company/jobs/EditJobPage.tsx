@@ -9,6 +9,7 @@ import {
   updateJob,
   type JobFullDetail,
 } from "./services/job.service";
+import { listClients, type ClientSummaryResponse } from "@/modules/company/clients/services/client.service";
 import type { JobDraft } from "./shared/types";
 import { ChipField, Field, Label, SectionHeader, Select } from "./shared/forms";
 import { CalendarIcon, Chevron, PinIcon } from "./shared/icons";
@@ -28,6 +29,13 @@ export default function EditJobPage({ jobId }: { jobId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientSummaryResponse[]>([]);
+
+  useEffect(() => {
+    listClients(0, 100)
+      .then(({ content }) => setClients(content))
+      .catch(() => {}); // non-fatal
+  }, []);
 
   useEffect(() => {
     if (fetched.current) return; // guard React StrictMode double-invoke
@@ -127,6 +135,17 @@ export default function EditJobPage({ jobId }: { jobId: string }) {
               <SectionHeader num={1} title="Job Details" />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field label="Job Title" required value={draft.details.title} onChange={(v) => setDetails({ title: v })} />
+                <div>
+                  <Label required>Client</Label>
+                  <div className="relative">
+                    <select value={draft.details.clientId ?? ""} onChange={(e) => setDetails({ clientId: e.target.value })}
+                      className={`w-full px-3 pr-9 py-2.5 rounded-lg border border-ink-200 text-[13.5px] bg-white outline-none focus:border-brand-400 appearance-none ${draft.details.clientId ? "text-ink-900" : "text-ink-400"}`}>
+                      <option value="" disabled>{clients.length ? "Select client" : "No clients available"}</option>
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.clientName}</option>)}
+                    </select>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
+                  </div>
+                </div>
                 <Select label="Job Function" options={["Engineering", "Product", "Design", "Sales", "Marketing"]} value={draft.details.roleCategory} onChange={(v) => setDetails({ roleCategory: v })} />
                 <Select label="Employment Type" required options={["Full-time", "Part-time", "Contract", "Internship", "Freelance"]} value={draft.details.employmentType} onChange={(v) => setDetails({ employmentType: v })} />
                 <Select label="Experience Level" options={["Entry Level", "Junior", "Mid Level", "Senior", "Lead"]} value={draft.requirements.experienceLevel} onChange={(v) => setRequirements({ experienceLevel: v })} />

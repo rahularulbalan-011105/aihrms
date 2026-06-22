@@ -102,6 +102,13 @@ export default function ClientsPage() {
   // Newest clients (list arrives createdAt DESC) for the rail.
   const recentAdditions = clients.slice(0, 4);
 
+  // Clients ranked by live open-job count (PUBLISHED jobs linked to the client).
+  const topClients = [...clients]
+    .filter((c) => c.openJobs > 0)
+    .sort((a, b) => b.openJobs - a.openJobs)
+    .slice(0, 5);
+  const maxOpenJobs = topClients[0]?.openJobs ?? 0;
+
   return (
     <div className="px-4 py-3 max-w-[1400px] mx-auto">
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -241,12 +248,31 @@ export default function ClientsPage() {
           </div>
 
           {/* Top Clients by Open Jobs */}
-          <EmptyRailCard
-            title="Top Clients by Open Jobs"
-            icon={<BriefIcon />}
-            heading="No data available"
-            sub="Add clients to see insights here."
-          />
+          {topClients.length === 0 ? (
+            <EmptyRailCard
+              title="Top Clients by Open Jobs"
+              icon={<BriefIcon />}
+              heading="No open jobs yet"
+              sub="Post jobs linked to a client to see them ranked here."
+            />
+          ) : (
+            <div className="card p-5">
+              <h3 className="font-display font-bold text-[15px] text-ink-900 mb-3">Top Clients by Open Jobs</h3>
+              <ul className="space-y-3">
+                {topClients.map((c) => (
+                  <li key={c.id}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[12.5px] font-semibold text-ink-800 truncate">{c.name}</span>
+                      <span className="text-[12px] font-semibold text-brand-600 shrink-0">{c.openJobs} open</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-ink-100 overflow-hidden">
+                      <div className="h-full rounded-full bg-brand-500" style={{ width: `${maxOpenJobs ? (c.openJobs / maxOpenJobs) * 100 : 0}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Recent Client Additions */}
           {recentAdditions.length === 0 ? (
@@ -298,7 +324,15 @@ function ClientRow({ client }: { client: Client }) {
       <div className="font-semibold text-ink-900 truncate">{client.name}</div>
       <div className="truncate">{client.industry}</div>
       <div className="truncate">{client.accountManager}</div>
-      <div>{client.openJobs}</div>
+      <div>
+        {client.openJobs > 0 ? (
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+            {client.openJobs} open
+          </span>
+        ) : (
+          <span className="text-ink-400">0</span>
+        )}
+      </div>
       <div className="truncate">{client.lastActivity}</div>
       <div>{client.status}</div>
       <div className="text-ink-400">⋯</div>
