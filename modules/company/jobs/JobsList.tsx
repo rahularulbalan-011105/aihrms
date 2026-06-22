@@ -21,6 +21,11 @@ import { StatCard } from "./components/StatCard";
 import { FilterSelect } from "./components/FilterSelect";
 import { JobCard } from "./components/jobs-list/JobCard";
 import {
+  WORKPLACE_LOCATIONS,
+  EXPERIENCE_LEVELS,
+  DEPARTMENTS,
+} from "./shared/constants";
+import {
   JobInsightsPanel,
   RecommendedCandidatesPanel,
   TopSkillsPanel,
@@ -37,6 +42,20 @@ const TABS: { key: StatusTab; label: string }[] = [
 
 const PAGE_SIZE = 3;
 
+/** A filter value of "" or one starting with "All" means "no filter". */
+const norm = (v: string): string | undefined =>
+  !v || v.startsWith("All") ? undefined : v;
+
+/** Map an experience-level label to an experience-min-years range. */
+function expRange(label: string): { min?: number; max?: number } {
+  if (label.includes("Entry")) return { min: 0, max: 2 };
+  if (label.includes("Early")) return { min: 2, max: 5 };
+  if (label.includes("Mid")) return { min: 5, max: 8 };
+  if (label.includes("Senior")) return { min: 8, max: 12 };
+  if (label.includes("Lead")) return { min: 12 };
+  return {};
+}
+
 export default function JobsList() {
   const [tab, setTab] = useState<StatusTab>("ALL");
   const [jobs, setJobs] = useState<JobApiResponse[]>([]);
@@ -49,6 +68,27 @@ export default function JobsList() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  // Pending dropdown selections — edited freely; do NOT trigger a fetch.
+  const [location, setLocation] = useState("");
+  const [jobFunction, setJobFunction] = useState("");
+  const [expLevel, setExpLevel] = useState("");
+  // Applied filters — only these drive the job query (set on "Search Filter").
+  const [applied, setApplied] = useState({
+    location: "",
+    jobFunction: "",
+    expLevel: "",
+  });
+
+  const applyFilters = () => {
+    setApplied({ location, jobFunction, expLevel });
+  };
+
+  const resetFilters = () => {
+    setLocation("");
+    setJobFunction("");
+    setExpLevel("");
+    setApplied({ location: "", jobFunction: "", expLevel: "" });
+  };
 
   useEffect(() => {
     fetchJobCounts()
@@ -60,8 +100,16 @@ export default function JobsList() {
     let active = true;
     setLoading(true);
     setError(null);
-    const status = tab === "ALL" ? undefined : tab;
-    listJobs(status)
+    const exp = expRange(applied.expLevel);
+    listJobs({
+      // The "Closed" tab covers both manually-closed and auto-expired jobs.
+      status:
+        tab === "ALL" ? undefined : tab === "CLOSED" ? "CLOSED,EXPIRED" : tab,
+      location: norm(applied.location),
+      jobFunction: norm(applied.jobFunction),
+      expMin: exp.min,
+      expMax: exp.max,
+    })
       .then(({ content }) => {
         if (active) setJobs(content);
       })
@@ -75,7 +123,7 @@ export default function JobsList() {
     return () => {
       active = false;
     };
-  }, [tab]);
+  }, [tab, applied]);
 
   const totalPages = Math.ceil(jobs.length / PAGE_SIZE);
   const pageJobs = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -171,24 +219,33 @@ export default function JobsList() {
           <div className="card p-3 flex flex-wrap items-center gap-2">
             <FilterSelect
               label="All Locations"
-              options={[
-                "All Locations",
-                "Bangalore",
-                "Hyderabad",
-                "Pune",
-                "Chennai",
-              ]}
+              value={location}
+              onChange={setLocation}
+              options={["All Locations", ...WORKPLACE_LOCATIONS]}
             />
             <FilterSelect
               label="Job Function"
-              options={["All", "Engineering", "DevOps", "Design"]}
+              value={jobFunction}
+              onChange={setJobFunction}
+              options={["All", ...DEPARTMENTS]}
             />
             <FilterSelect
               label="Experience Level"
-              options={["All", "Entry", "Mid", "Senior"]}
+              value={expLevel}
+              onChange={setExpLevel}
+              options={["All", ...EXPERIENCE_LEVELS]}
             />
-            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors">
-              <FunnelIcon /> Filters
+            <button
+              onClick={applyFilters}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity"
+            >
+              <FunnelIcon /> Search
+            </button>
+            <button
+              onClick={resetFilters}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors"
+            >
+              Reset
             </button>
           </div>
 

@@ -223,14 +223,30 @@ export async function saveDraftJob(draft: JobDraft): Promise<{ id: string }> {
   return { id: json.data.id as string };
 }
 
-/** GET /company/jobs — paginated list, optionally filtered by status. */
+export interface JobListFilters {
+  /** Single status, or a comma-separated list (e.g. "CLOSED,EXPIRED"). */
+  status?: string;
+  location?: string;
+  /** matches department OR role/category (case-insensitive substring) */
+  jobFunction?: string;
+  /** experience-min-years range (inclusive) */
+  expMin?: number;
+  expMax?: number;
+  page?: number;
+  size?: number;
+}
+
+/** GET /company/jobs — paginated list with optional status / location / function / experience filters. */
 export async function listJobs(
-  status?: JobApiResponse["status"],
-  page = 0,
-  size = 20,
+  filters: JobListFilters = {},
 ): Promise<{ content: JobApiResponse[]; totalElements: number }> {
+  const { status, location, jobFunction, expMin, expMax, page = 0, size = 20 } = filters;
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (status) params.set("status", status);
+  if (location) params.set("location", location);
+  if (jobFunction) params.set("function", jobFunction);
+  if (expMin != null) params.set("expMin", String(expMin));
+  if (expMax != null) params.set("expMax", String(expMax));
 
   const res = await fetch(`${API.COMPANY}/company/jobs?${params.toString()}`, {
     headers: { Authorization: `Bearer ${getAccessToken()}` },
@@ -281,6 +297,7 @@ export function responseToDraft(d: JobFullDetail): JobDraft {
   return {
     details: {
       title: d.title ?? "",
+      clientId: "",
       roleCategory: d.roleCategory ?? "",
       department: d.department ?? "",
       employmentType: d.employmentType ?? "",

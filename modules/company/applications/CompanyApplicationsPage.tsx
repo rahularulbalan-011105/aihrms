@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pagination } from "@/components/ui/Pagination";
+import { StatCard } from "@/modules/company/jobs/components/StatCard";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Applications (agency-wide) — all applications across jobs.
@@ -24,11 +25,11 @@ interface Application {
 }
 
 const STATS = [
-  { key: "total",   label: "Total Applications", value: 248, delta: "18% from last 30 days", iconBg: "bg-brand-50 text-brand-600",  icon: <DocIcon /> },
-  { key: "new",     label: "New",                value: 142, delta: "12% from last 30 days", iconBg: "bg-green-50 text-green-600",  icon: <UsersIcon /> },
-  { key: "progress",label: "In Progress",        value: 64,  delta: "8% from last 30 days",  iconBg: "bg-blue-50 text-blue-600",    icon: <ClipboardIcon /> },
-  { key: "short",   label: "Shortlisted",        value: 28,  delta: "6% from last 30 days",  iconBg: "bg-orange-50 text-orange-600",icon: <UsersIcon /> },
-  { key: "hired",   label: "Hired",              value: 14,  delta: "4% from last 30 days",  iconBg: "bg-brand-50 text-brand-600",  icon: <UserCheckIcon /> },
+  { key: "total",   label: "Total Applications", value: 248, iconBg: "bg-brand-50 text-brand-600",  icon: <DocIcon /> },
+  { key: "new",     label: "New",                value: 142, iconBg: "bg-green-50 text-green-600",  icon: <UsersIcon /> },
+  { key: "progress",label: "In Progress",        value: 64,  iconBg: "bg-blue-50 text-blue-600",    icon: <ClipboardIcon /> },
+  { key: "short",   label: "Shortlisted",        value: 28,  iconBg: "bg-orange-50 text-orange-600",icon: <UsersIcon /> },
+  { key: "hired",   label: "Hired",              value: 14,  iconBg: "bg-brand-50 text-brand-600",  icon: <UserCheckIcon /> },
 ];
 
 const APPLICATIONS: Application[] = [
@@ -80,19 +81,7 @@ export default function CompanyApplicationsPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {STATS.map((s) => (
-          <div key={s.key} className="card px-4 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.iconBg}`}>{s.icon}</span>
-              <div className="leading-tight">
-                <div className="font-display font-extrabold text-[22px] text-ink-900">{s.value}</div>
-                <div className="text-[12px] text-ink-600 font-medium">{s.label}</div>
-              </div>
-            </div>
-            <div className="mt-1.5 text-[11px] text-green-600 font-semibold flex items-center gap-1">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>
-              {s.delta}
-            </div>
-          </div>
+          <StatCard key={s.key} iconBg={s.iconBg} icon={s.icon} value={String(s.value)} label={s.label} />
         ))}
       </div>
 

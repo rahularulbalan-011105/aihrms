@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import JobStepper from "../shared/JobStepper";
 import RightRail from "../shared/RightRail";
+import { WORKPLACE_LOCATIONS, DEPARTMENTS } from "../shared/constants";
 import type { JobDraft, JobDetailsData } from "../shared/types";
+import { listClients, type ClientSummaryResponse } from "@/modules/company/clients/services/client.service";
 
 interface Props {
   data: JobDraft;
@@ -17,6 +19,13 @@ type FieldErrors = Partial<Record<keyof JobDetailsData, string>>;
 export default function Step1JobDetails({ data, onChange, onCancel, onContinue }: Props) {
   const d = data.details;
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [clients, setClients] = useState<ClientSummaryResponse[]>([]);
+
+  useEffect(() => {
+    listClients(0, 100)
+      .then(({ content }) => setClients(content))
+      .catch(() => {}); // non-fatal — dropdown stays empty if clients fail to load
+  }, []);
 
   const set = <K extends keyof JobDetailsData>(k: K, v: JobDetailsData[K]) => {
     onChange({ ...data, details: { ...d, [k]: v } });
@@ -61,8 +70,9 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
             <Header icon={<BriefIcon />} title="Job Details" subtitle="Provide the basic information about the job role." />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="Job Title" required value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. Senior Software Engineer" error={errors.title} />
+              <ClientSelect value={d.clientId} onChange={(v) => set("clientId", v)} clients={clients} />
               <Select label="Job Role / Category (Optional)" value={d.roleCategory} onChange={(v) => set("roleCategory", v)} placeholder="Select role / category" options={["Software Development", "Product", "Design", "Marketing"]} />
-              <Select label="Department" value={d.department} onChange={(v) => set("department", v)} placeholder="Select department" options={["Engineering", "Product", "Design", "Sales", "Marketing", "HR"]} />
+              <Select label="Department" value={d.department} onChange={(v) => set("department", v)} placeholder="Select department" options={DEPARTMENTS} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4 mt-4 items-end">
@@ -85,7 +95,7 @@ export default function Step1JobDetails({ data, onChange, onCancel, onContinue }
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Field label="Workplace / Office Location" required value={d.workplaceLocation} onChange={(v) => set("workplaceLocation", v)} placeholder="Enter city, state or country" error={errors.workplaceLocation} />
+              <Select label="Workplace / Office Location" required value={d.workplaceLocation} onChange={(v) => set("workplaceLocation", v)} placeholder="Select city, state or country" options={WORKPLACE_LOCATIONS} error={errors.workplaceLocation} />
               <DateField label="Proposed Starting Date" required value={d.startingDate} onChange={(v) => set("startingDate", v)} />
             </div>
 
@@ -222,6 +232,21 @@ function Select({ label, required, value, onChange, placeholder, options, error 
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
       </div>
       <ErrorText error={error} />
+    </div>
+  );
+}
+function ClientSelect({ value, onChange, clients }: { value: string; onChange: (v: string) => void; clients: ClientSummaryResponse[] }) {
+  return (
+    <div>
+      <Label>Client (Optional)</Label>
+      <div className="relative">
+        <select value={value ?? ""} onChange={(e) => onChange(e.target.value)}
+          className={`w-full px-3 pr-9 py-2.5 rounded-lg border text-[13.5px] bg-white focus:outline-none border-ink-200 focus:border-brand-400 ${value ? "text-ink-900" : "text-ink-400"} appearance-none`}>
+          <option value="">{clients.length ? "Select client" : "No clients available"}</option>
+          {clients.map((c) => <option key={c.id} value={c.id}>{c.clientName}</option>)}
+        </select>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none">▾</span>
+      </div>
     </div>
   );
 }

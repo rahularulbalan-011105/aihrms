@@ -6,6 +6,7 @@ export interface SkillRow {
 
 export interface JobDetailsData {
   title: string;
+  clientId: string;
   roleCategory: string;
   department: string;
   employmentType: string;
@@ -76,6 +77,7 @@ export interface JobDraft {
 export const EMPTY_JOB: JobDraft = {
   details: {
     title: "",
+    clientId: "",
     roleCategory: "",
     department: "",
     employmentType: "Full-time",

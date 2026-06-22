@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "./services/client.service";
 
 /* ── Option lists ─────────────────────────────────────────────────────── */
 const INDUSTRIES = ["Information Technology", "Finance & Banking", "Healthcare", "Manufacturing", "Retail & E-commerce", "Education", "Consulting", "Other"];
@@ -43,6 +44,8 @@ export default function AddClientPage() {
   const [form, setForm] = useState<ClientForm>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof ClientForm, string>>>({});
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const set = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
     setForm((prev) => {
@@ -79,11 +82,43 @@ export default function AddClientPage() {
     return Object.keys(errs).length === 0;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return;
-    // No clients backend yet — confirm locally so the flow is usable.
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    setSubmitError(null);
+    try {
+      await createClient({
+        clientName: form.clientName.trim(),
+        website: form.website.trim() || undefined,
+        industry: form.industry,
+        companySize: form.companySize || undefined,
+        companyType: form.companyType || undefined,
+        annualRevenue: form.annualRevenue || undefined,
+        headquarters: form.headquarters.trim(),
+        country: form.country,
+        timeZone: form.timeZone || undefined,
+        contactName: form.contactName.trim(),
+        email: form.email.trim(),
+        countryCode: form.countryCode || undefined,
+        phone: form.phone.trim(),
+        designation: form.designation.trim() || undefined,
+        department: form.department || undefined,
+        linkedin: form.linkedin.trim() || undefined,
+        billingEmail: form.billingEmail.trim(),
+        billingCountryCode: form.billingCountryCode || undefined,
+        billingPhone: form.billingPhone.trim() || undefined,
+        billingAddress: form.billingAddress.trim() || undefined,
+        city: form.city.trim() || undefined,
+        state: form.state.trim() || undefined,
+        postalCode: form.postalCode.trim() || undefined,
+      });
+      setSaved(true);
+      setTimeout(() => router.push("/company/clients"), 1200);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to save client");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -107,6 +142,11 @@ export default function AddClientPage() {
           {saved && (
             <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-[13px] font-semibold flex items-center gap-2">
               <CheckIcon /> Client saved successfully.
+            </div>
+          )}
+          {submitError && (
+            <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px] font-semibold">
+              {submitError}
             </div>
           )}
 
@@ -167,10 +207,11 @@ export default function AddClientPage() {
             <button
               type="button"
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2"
+              disabled={saving}
+              className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: "var(--gradient-brand)" }}
             >
-              Save Client <ChevronRight />
+              {saving ? "Saving…" : "Save Client"} <ChevronRight />
             </button>
           </div>
         </div>

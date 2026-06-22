@@ -2,6 +2,7 @@
 
 import JobStepper from "../shared/JobStepper";
 import RightRail from "../shared/RightRail";
+import { EXPERIENCE_LEVELS } from "../shared/constants";
 import type { JobDraft, RequirementsData, SkillRow } from "../shared/types";
 import { useConfirmDelete } from "@/modules/auth/components/candidate-reg/shared/hooks";
 import { ConfirmDialog, Tooltip } from "@/modules/auth/components/candidate-reg/shared/ui";
@@ -87,7 +88,7 @@ export default function Step2Requirements({ data, onChange, onBack, onContinue }
                 </div>
               </div>
               <Select label="Experience Level" required value={r.experienceLevel} onChange={(v) => set("experienceLevel", v)}
-                options={["Entry Level", "Early Career", "Mid Level", "Senior Level", "Lead / Manager"]} />
+                options={EXPERIENCE_LEVELS} />
             </div>
 
             <div className="mt-4">
