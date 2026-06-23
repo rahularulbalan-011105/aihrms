@@ -27,6 +27,28 @@ export interface JobCountsResponse {
   drafts: number;
 }
 
+/** One Active-Jobs dashboard row — job identity + application funnel counts,
+ * all aggregated server-side (no per-job count calls needed). */
+export interface DashboardJobRow {
+  id: string;
+  title: string;
+  department: string | null;
+  applications: number;
+  shortlisted: number;
+  interviews: number;
+  offered: number;
+  status: "DRAFT" | "PUBLISHED" | "CLOSED" | "EXPIRED";
+}
+
+/** Whole company-dashboard payload in one response: job-status tallies +
+ * the Active-Jobs rows with funnel counts. */
+export interface CompanyDashboardResponse {
+  total: number;
+  published: number;
+  drafts: number;
+  activeJobs: DashboardJobRow[];
+}
+
 /** Full backend JobDetailResponse — used to prefill the Edit Job form. */
 export interface JobFullDetail {
   id: string;
@@ -259,6 +281,18 @@ export async function listJobs(
     content: (json?.data?.content ?? []) as JobApiResponse[],
     totalElements: (json?.data?.totalElements ?? 0) as number,
   };
+}
+
+/** GET /company/jobs/dashboard — the whole company dashboard in one request:
+ * job-status counts + Active-Jobs rows with funnel counts already aggregated
+ * server-side. Replaces the separate /counts call and per-job count calls. */
+export async function fetchCompanyDashboard(limit = 5): Promise<CompanyDashboardResponse> {
+  const res = await fetch(`${API.COMPANY}/company/jobs/dashboard?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message ?? `Failed to load dashboard (${res.status})`);
+  return json.data as CompanyDashboardResponse;
 }
 
 /** GET /company/jobs/{id} — full detail for a single job (ownership-guarded). */

@@ -507,3 +507,13 @@ export async function uploadCertificateFile(certId: string, file: File): Promise
   const res = await authedUpload(`/profile/certifications/${certId}/upload`, formData);
   await handleResponse<unknown>(res);
 }
+
+/**
+ * POST /profile/submit — finalize registration: transitions the profile
+ * DRAFT → SUBMITTED (backend requires at least one skill). Returns nothing;
+ * throws with the backend message (e.g. PROFILE_INCOMPLETE) on failure.
+ */
+export async function submitProfile(): Promise<void> {
+  const res = await authedFetch("/profile/submit", { method: "POST" });
+  await handleResponse<unknown>(res);
+}

@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import {
-  listJobs,
-  type JobApiResponse,
-  type JobCountsResponse,
+import type {
+  CompanyDashboardResponse,
+  DashboardJobRow,
+  JobCountsResponse,
 } from "@/modules/company/jobs/services/job.service";
-import {
-  fetchApplicationCounts,
-  type ApplicationCounts,
-} from "@/modules/company/jobs/services/applications.service";
 import { StatCard } from "@/modules/company/jobs/components/StatCard";
 import { JobStatusBadge } from "@/modules/company/jobs/components/JobStatusBadge";
 import {
@@ -22,15 +18,6 @@ import {
   ArrowRightLong,
 } from "../icons";
 
-/* Number of published jobs whose application counts we hydrate for the
- * Active Jobs table + aggregate stat tiles. Capped to keep per-job count
- * calls bounded — the table only shows the most recent handful anyway. */
-const TABLE_LIMIT = 5;
-
-interface JobRow extends JobApiResponse {
-  appCounts: ApplicationCounts | null;
-}
-
 interface Aggregate {
   applications: number;
   shortlisted: number;
@@ -40,67 +27,36 @@ interface Aggregate {
 
 const EMPTY_AGG: Aggregate = { applications: 0, shortlisted: 0, interview: 0, offered: 0 };
 
-/* Live company dashboard, shown once the company has at least one job.
- * Active Jobs, the Active Jobs table and the application aggregates
- * (Applications / Shortlisted / Interviews / funnel) are wired to company_api;
- * Total Candidates / Hires, the hiring-overview trend and Upcoming Interviews
- * have no backend domain yet and render as empty/illustrative placeholders. */
+/* Live company dashboard, shown once the company has at least one job. All its
+ * live data — the Active Jobs table rows and the application aggregates
+ * (Applications / Shortlisted / Interviews / funnel) — arrives as props from
+ * the single dashboard call in CompanyDashboard; this component does no
+ * fetching of its own. Total Candidates / Hires, the hiring-overview trend and
+ * Upcoming Interviews have no backend domain yet and render as
+ * empty/illustrative placeholders. */
 export default function PopulatedDashboard({
   companyName,
   counts,
+  activeJobs,
 }: {
   companyName: string;
   counts: JobCountsResponse;
+  activeJobs: CompanyDashboardResponse["activeJobs"];
 }) {
-  const [rows, setRows] = useState<JobRow[]>([]);
-  const [agg, setAgg] = useState<Aggregate>(EMPTY_AGG);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-
-    listJobs({ status: "PUBLISHED", page: 0, size: TABLE_LIMIT })
-      .then(async ({ content }) => {
-        // Hydrate per-job application counts (degrade to null per row on failure).
-        const withCounts = await Promise.all(
-          content.map(async (job): Promise<JobRow> => {
-            try {
-              return { ...job, appCounts: await fetchApplicationCounts(job.id) };
-            } catch {
-              return { ...job, appCounts: null };
-            }
-          }),
-        );
-        if (!active) return;
-        setRows(withCounts);
-        setAgg(
-          withCounts.reduce<Aggregate>((acc, row) => {
-            const c = row.appCounts;
-            if (!c) return acc;
-            return {
-              applications: acc.applications + c.total,
-              shortlisted: acc.shortlisted + c.shortlisted,
-              interview: acc.interview + c.interview,
-              offered: acc.offered + c.offered,
-            };
-          }, EMPTY_AGG),
-        );
-      })
-      .catch(() => {
-        if (active) {
-          setRows([]);
-          setAgg(EMPTY_AGG);
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const rows: DashboardJobRow[] = activeJobs;
+  const agg = useMemo<Aggregate>(
+    () =>
+      rows.reduce<Aggregate>(
+        (acc, row) => ({
+          applications: acc.applications + row.applications,
+          shortlisted: acc.shortlisted + row.shortlisted,
+          interview: acc.interview + row.interviews,
+          offered: acc.offered + row.offered,
+        }),
+        EMPTY_AGG,
+      ),
+    [rows],
+  );
 
   const funnel = [
     { label: "Applications", value: agg.applications, color: "#7c3aed" },
@@ -178,11 +134,11 @@ export default function PopulatedDashboard({
                     <div className="leading-tight min-w-0">
                       <div className="text-[12.5px] text-ink-800">
                         <b className="text-ink-900">{row.title}</b>{" "}
-                        {row.appCounts && row.appCounts.total > 0
-                          ? `has ${row.appCounts.total} application${row.appCounts.total === 1 ? "" : "s"}`
+                        {row.applications > 0
+                          ? `has ${row.applications} application${row.applications === 1 ? "" : "s"}`
                           : "is now live"}
                       </div>
-                      <div className="text-[10.5px] text-ink-500">{row.workplaceLocation || "—"}</div>
+                      <div className="text-[10.5px] text-ink-500">{row.department || "—"}</div>
                     </div>
                   </li>
                 ))}
@@ -238,9 +194,7 @@ export default function PopulatedDashboard({
               View All Jobs <ArrowRightLong size={13} />
             </Link>
           </div>
-          {loading ? (
-            <div className="py-10 text-center text-ink-400 text-[13px]">Loading jobs…</div>
-          ) : rows.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="py-10 text-center text-ink-400 text-[13px]">No active jobs to show.</div>
           ) : (
             <div className="overflow-x-auto">
@@ -265,10 +219,10 @@ export default function PopulatedDashboard({
                         </Link>
                       </td>
                       <td className="py-3 px-3 text-ink-600">{row.department || "—"}</td>
-                      <td className="py-3 px-3 text-center font-semibold text-ink-800">{row.appCounts?.total ?? 0}</td>
-                      <td className="py-3 px-3 text-center text-ink-700">{row.appCounts?.shortlisted ?? 0}</td>
-                      <td className="py-3 px-3 text-center text-ink-700">{row.appCounts?.interview ?? 0}</td>
-                      <td className="py-3 px-3 text-center text-ink-700">{row.appCounts?.offered ?? 0}</td>
+                      <td className="py-3 px-3 text-center font-semibold text-ink-800">{row.applications}</td>
+                      <td className="py-3 px-3 text-center text-ink-700">{row.shortlisted}</td>
+                      <td className="py-3 px-3 text-center text-ink-700">{row.interviews}</td>
+                      <td className="py-3 px-3 text-center text-ink-700">{row.offered}</td>
                       <td className="py-3 pl-3"><JobStatusBadge status={row.status} /></td>
                     </tr>
                   ))}

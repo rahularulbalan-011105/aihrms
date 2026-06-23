@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatCard } from "@/modules/company/jobs/components/StatCard";
+import { Tooltip, ConfirmDialog } from "@/modules/auth/components/candidate-reg/shared/ui";
+import { useConfirmDelete } from "@/modules/auth/components/candidate-reg/shared/hooks";
 import {
   listClients,
+  deleteClient,
   type ClientSummaryResponse,
 } from "./services/client.service";
 
@@ -29,7 +33,9 @@ const COLUMNS = ["Client Name", "Industry", "Account Manager", "Open Jobs", "Las
 
 const INDUSTRY_OPTIONS = ["All Industries", "Information Technology", "Finance & Banking", "Healthcare", "Manufacturing"];
 const STATUS_OPTIONS = ["All", "Active", "Inactive", "Prospect"];
-const ACCOUNT_MANAGER_OPTIONS = ["All", "Unassigned"];
+
+/** Default (unfiltered) selection — "Search" applies, "Reset" returns here. */
+const DEFAULT_FILTERS = { industry: "All Industries", status: "All", accountManager: "All" };
 
 function fmtDate(iso: string): string {
   const date = new Date(iso);
@@ -50,15 +56,29 @@ function mapClient(raw: ClientSummaryResponse): Client {
 }
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
 
-  // Filters / search (client-side — the list API has no search/filter params yet).
-  const [search, setSearch] = useState("");
-  const [industry, setIndustry] = useState("All Industries");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [accountManager, setAccountManager] = useState("All");
+  // Filters (client-side — the list API has no filter params yet). Apply-on-click
+  // like the Jobs list: the dropdowns hold *pending* selections; only "Search"
+  // copies them into `applied`, which actually drives the filtered result.
+  const [industry, setIndustry] = useState(DEFAULT_FILTERS.industry);
+  const [statusFilter, setStatusFilter] = useState(DEFAULT_FILTERS.status);
+  const [accountManager, setAccountManager] = useState(DEFAULT_FILTERS.accountManager);
+  const [applied, setApplied] = useState(DEFAULT_FILTERS);
+
+  const applyFilters = () =>
+    setApplied({ industry, status: statusFilter, accountManager });
+
+  const resetFilters = () => {
+    setIndustry(DEFAULT_FILTERS.industry);
+    setStatusFilter(DEFAULT_FILTERS.status);
+    setAccountManager(DEFAULT_FILTERS.accountManager);
+    setApplied(DEFAULT_FILTERS);
+  };
 
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -73,6 +93,25 @@ export default function ClientsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleEdit = (id: string) => router.push(`/company/clients/${id}/edit`);
+
+  // Soft-delete: remove the row from local state once the server confirms.
+  const handleDelete = (client: Client) =>
+    triggerDelete(`Delete "${client.name}"?`, async () => {
+      await deleteClient(client.id);
+      setClients((prev) => prev.filter((c) => c.id !== client.id));
+      resetConfirm();
+    });
+
+  // Account Manager filter options derived from the loaded clients (unique,
+  // alpha-sorted, "Unassigned" last) — so the dropdown reflects real assignees.
+  const accountManagerOptions = useMemo(() => {
+    const names = new Set(clients.map((c) => c.accountManager));
+    const hasUnassigned = names.delete("Unassigned");
+    const sorted = [...names].sort((a, b) => a.localeCompare(b));
+    return ["All", ...sorted, ...(hasUnassigned ? ["Unassigned"] : [])];
+  }, [clients]);
+
   // Stat cards reflect ALL clients, independent of the active filters.
   const total = clients.length;
   const active = clients.filter((c) => c.status === "Active").length;
@@ -81,20 +120,18 @@ export default function ClientsPage() {
   const openJobs = clients.reduce((sum, c) => sum + c.openJobs, 0);
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
     return clients.filter((c) => {
-      if (term && !c.name.toLowerCase().includes(term) && !c.industry.toLowerCase().includes(term)) return false;
-      if (industry !== "All Industries" && c.industry !== industry) return false;
-      if (statusFilter !== "All" && c.status !== statusFilter) return false;
-      if (accountManager !== "All" && c.accountManager !== accountManager) return false;
+      if (applied.industry !== "All Industries" && c.industry !== applied.industry) return false;
+      if (applied.status !== "All" && c.status !== applied.status) return false;
+      if (applied.accountManager !== "All" && c.accountManager !== applied.accountManager) return false;
       return true;
     });
-  }, [clients, search, industry, statusFilter, accountManager]);
+  }, [clients, applied]);
 
-  // Reset to the first page whenever the result set changes.
+  // Reset to the first page whenever the applied filters or page size change.
   useEffect(() => {
     setPage(1);
-  }, [search, industry, statusFilter, accountManager, rowsPerPage]);
+  }, [applied, rowsPerPage]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const pageRows = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -135,21 +172,25 @@ export default function ClientsPage() {
             <StatCard iconBg="bg-orange-50 text-orange-600" icon={<BriefIcon />} label="Open Jobs" value={String(openJobs)} />
           </div>
 
-          {/* Filter bar */}
+          {/* Filter bar — apply-on-click (pending selections → Search → applied) */}
           <div className="card p-3 flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-[200px] px-3 py-2 bg-ink-100/60 rounded-xl">
-              <SearchIcon />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by client name or industry..."
-                className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink-700 placeholder:text-ink-400 outline-none"
-              />
-            </div>
             <FilterSelect value={industry} onChange={setIndustry} options={INDUSTRY_OPTIONS} />
             <FilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
-            <FilterSelect value={accountManager} onChange={setAccountManager} options={ACCOUNT_MANAGER_OPTIONS} />
+            <FilterSelect value={accountManager} onChange={setAccountManager} options={accountManagerOptions} />
+            <button
+              type="button"
+              onClick={applyFilters}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity"
+            >
+              <FunnelIcon /> Search
+            </button>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-ink-200 text-[13px] font-semibold text-ink-700 hover:bg-ink-100 transition-colors"
+            >
+              Reset
+            </button>
           </div>
 
           {/* Table */}
@@ -184,7 +225,9 @@ export default function ClientsPage() {
               <div className="py-14 text-center text-ink-500 text-[13px]">No clients match your filters.</div>
             ) : (
               <div>
-                {pageRows.map((c) => <ClientRow key={c.id} client={c} />)}
+                {pageRows.map((c) => (
+                  <ClientRow key={c.id} client={c} onEdit={handleEdit} onDelete={handleDelete} />
+                ))}
               </div>
             )}
 
@@ -313,16 +356,52 @@ export default function ClientsPage() {
           </div>
         </aside>
       </div>
+
+      {confirm.open && (
+        <ConfirmDialog label={confirm.label} onConfirm={confirm.onConfirm} onCancel={resetConfirm} />
+      )}
     </div>
   );
 }
 
 /* ── Pieces ───────────────────────────────────────────────────────────── */
-function ClientRow({ client }: { client: Client }) {
+/* Truncates to one line; surfaces the full text as a hover tooltip only when
+ * the text is actually clipped (scrollWidth > clientWidth). Re-measures on
+ * container resize. */
+function TruncatedText({ text, className }: { text: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollWidth > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <div ref={ref} className={`truncate ${className ?? ""}`} title={overflowing ? text : undefined}>
+      {text}
+    </div>
+  );
+}
+
+function ClientRow({
+  client,
+  onEdit,
+  onDelete,
+}: {
+  client: Client;
+  onEdit: (id: string) => void;
+  onDelete: (client: Client) => void;
+}) {
   return (
     <div className="grid grid-cols-[1.4fr_1fr_1.1fr_0.8fr_1fr_0.9fr_0.9fr] items-center px-5 py-3 border-b border-ink-100 last:border-0 text-[13px] text-ink-700">
-      <div className="font-semibold text-ink-900 truncate">{client.name}</div>
-      <div className="truncate">{client.industry}</div>
+      <TruncatedText text={client.name} className="font-semibold text-ink-900" />
+      <TruncatedText text={client.industry} />
       <div className="truncate">{client.accountManager}</div>
       <div>
         {client.openJobs > 0 ? (
@@ -335,8 +414,46 @@ function ClientRow({ client }: { client: Client }) {
       </div>
       <div className="truncate">{client.lastActivity}</div>
       <div>{client.status}</div>
-      <div className="text-ink-400">⋯</div>
+      <div className="flex items-center gap-1">
+        <RowAction label="Edit" onClick={() => onEdit(client.id)} className="text-ink-400 hover:text-brand-600 hover:bg-brand-50">
+          <EditIcon />
+        </RowAction>
+        <RowAction label="Delete" onClick={() => onDelete(client)} className="text-ink-400 hover:text-red-600 hover:bg-red-50">
+          <TrashIcon />
+        </RowAction>
+        <RowAction label="Lock" className="text-ink-400 hover:text-amber-600 hover:bg-amber-50">
+          <LockIcon />
+        </RowAction>
+        <RowAction label="Unlock" className="text-ink-400 hover:text-green-600 hover:bg-green-50">
+          <UnlockIcon />
+        </RowAction>
+      </div>
     </div>
+  );
+}
+
+function RowAction({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick?: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip label={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className={`w-7 h-7 grid place-items-center rounded-lg transition-colors ${className ?? ""}`}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }
 
@@ -400,5 +517,9 @@ function BuildingLargeIcon() { return (<svg width="56" height="56" viewBox="0 0 
 function UsersIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.6" /><circle cx="17" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 20c0-2 2-3 3.5-3 2 0 3.5 1 3.5 3" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function UserPlusIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" /><path d="M3 20c1.5-3.5 4-5 6-5s4.5 1.5 6 5M18 8v6M21 11h-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
 function ImportIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12M8 11l4 4 4-4M5 21h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
-function SearchIcon() { return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>); }
+function FunnelIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M3 5h18l-7 8v6l-4-2v-4L3 5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>); }
+function EditIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10a2 2 0 0 0-3-3L5 17v3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M13.5 6.5l3 3" stroke="currentColor" strokeWidth="1.6" /></svg>); }
+function TrashIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>); }
+function LockIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="1.6" /></svg>); }
+function UnlockIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M8 11V8a4 4 0 0 1 7.5-1.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>); }
 function ChevronRight() { return (<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>); }

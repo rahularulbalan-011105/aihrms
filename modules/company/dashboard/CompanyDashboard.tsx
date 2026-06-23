@@ -1,44 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getStoredCompanyName } from "@/lib/api/config";
 import {
-  fetchJobCounts,
-  type JobCountsResponse,
+  fetchCompanyDashboard,
+  type CompanyDashboardResponse,
 } from "@/modules/company/jobs/services/job.service";
 import EmptyDashboard from "./components/EmptyDashboard";
 import PopulatedDashboard from "./components/PopulatedDashboard";
 
-const ZERO_COUNTS: JobCountsResponse = { total: 0, published: 0, drafts: 0 };
+const ZERO_DASHBOARD: CompanyDashboardResponse = {
+  total: 0,
+  published: 0,
+  drafts: 0,
+  activeJobs: [],
+};
 
 /* Orchestrator: the company dashboard has two faces. With no jobs it shows the
  * onboarding empty state; once any job exists it shows the live hiring
- * dashboard. The job-count API decides which — total > 0 → populated view. */
+ * dashboard. A single dashboard call returns both the job-status counts (which
+ * decide the face — total > 0 → populated) and the Active-Jobs rows. */
 export default function CompanyDashboard() {
   const [companyName, setCompanyName] = useState("");
-  const [counts, setCounts] = useState<JobCountsResponse>(ZERO_COUNTS);
+  const [dashboard, setDashboard] = useState<CompanyDashboardResponse>(ZERO_DASHBOARD);
   const [ready, setReady] = useState(false);
+  // Guard against React StrictMode double-invoking the fetch effect in dev,
+  // which would call /jobs/dashboard twice. The ref persists across the
+  // double-mount, so the request fires exactly once.
+  const fetched = useRef(false);
 
   useEffect(() => {
     setCompanyName(getStoredCompanyName() ?? "");
   }, []);
 
   useEffect(() => {
-    let active = true;
-    fetchJobCounts()
-      .then((c) => {
-        if (active) setCounts(c);
-      })
+    if (fetched.current) return;
+    fetched.current = true;
+    fetchCompanyDashboard()
+      .then((data) => setDashboard(data))
       .catch(() => {
         // non-fatal — fall back to the empty state if company_api is unavailable
-        if (active) setCounts(ZERO_COUNTS);
+        setDashboard(ZERO_DASHBOARD);
       })
-      .finally(() => {
-        if (active) setReady(true);
-      });
-    return () => {
-      active = false;
-    };
+      .finally(() => setReady(true));
   }, []);
 
   if (!ready) {
@@ -49,8 +53,14 @@ export default function CompanyDashboard() {
     );
   }
 
-  return counts.total > 0 ? (
-    <PopulatedDashboard companyName={companyName} counts={counts} />
+  const counts = {
+    total: dashboard.total,
+    published: dashboard.published,
+    drafts: dashboard.drafts,
+  };
+
+  return dashboard.total > 0 ? (
+    <PopulatedDashboard companyName={companyName} counts={counts} activeJobs={dashboard.activeJobs} />
   ) : (
     <EmptyDashboard companyName={companyName} counts={counts} />
   );

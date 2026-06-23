@@ -1,11 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatCard } from "@/modules/company/jobs/components/StatCard";
+import { Tooltip, ConfirmDialog } from "@/modules/auth/components/candidate-reg/shared/ui";
+import { useConfirmDelete } from "@/modules/auth/components/candidate-reg/shared/hooks";
+import {
+  listTeamMembers,
+  deleteTeamMember,
+  type TeamMemberSummaryResponse,
+} from "./services/team.service";
 
-type Role = "Admin" | "Manager" | "Recruiter";
+type Role = "Admin" | "Manager" | "Recruiter" | "Viewer";
 type Status = "Active" | "Invited" | "Inactive";
 type TeamTab = "Team Members" | "Roles & Permissions" | "Activity Log";
 
@@ -29,32 +36,53 @@ interface Activity {
 
 const TABS: TeamTab[] = ["Team Members", "Roles & Permissions", "Activity Log"];
 
-// Mock team — swap for a real `/company/team` API when the domain exists.
-const MEMBERS: Member[] = [
-  { id: "1", name: "Ananya Singh",  email: "ananya.singh@acme.com",  role: "Admin",     department: "Operations",   accessScope: "All Clients & Jobs",   status: "Active",   lastActive: "Today, 10:30 AM" },
-  { id: "2", name: "Rahul Sharma",  email: "rahul.sharma@acme.com",  role: "Manager",   department: "Recruitment",  accessScope: "All Clients",          status: "Active",   lastActive: "Today, 09:15 AM" },
-  { id: "3", name: "Neha Verma",    email: "neha.verma@acme.com",    role: "Recruiter", department: "Recruitment",  accessScope: "Specific Clients (8)", status: "Active",   lastActive: "Yesterday, 06:20 PM" },
-  { id: "4", name: "Vikram Mehta",  email: "vikram.mehta@acme.com",  role: "Recruiter", department: "Recruitment",  accessScope: "Specific Clients (5)", status: "Active",   lastActive: "Yesterday, 06:45 PM" },
-  { id: "5", name: "Priya Nair",    email: "priya.nair@acme.com",    role: "Manager",   department: "Operations",   accessScope: "All Clients & Jobs",   status: "Active",   lastActive: "2 days ago" },
-  { id: "6", name: "Amit Kulkarni", email: "amit.kulkarni@acme.com", role: "Admin",     department: "Business Dev", accessScope: "All Clients & Jobs",   status: "Invited",  lastActive: "Invited 1 day ago" },
-  { id: "7", name: "Rohit Sharma",  email: "rohit.sharma@acme.com",  role: "Recruiter", department: "Recruitment",  accessScope: "Specific Clients (3)", status: "Inactive", lastActive: "7 days ago" },
-  { id: "8", name: "Pooja Sethi",   email: "pooja.sethi@acme.com",   role: "Admin",     department: "Finance",      accessScope: "All Clients",          status: "Invited",  lastActive: "Invited 3 days ago" },
-];
+const STATUS_LABEL: Record<TeamMemberSummaryResponse["status"], Status> = {
+  ACTIVE: "Active",
+  INVITED: "Invited",
+  INACTIVE: "Inactive",
+};
 
-const ACTIVITY: Activity[] = [
-  { id: "a1", who: "Ananya Singh", what: "added a new client", when: "2 hours ago" },
-  { id: "a2", who: "Rahul Sharma", what: "moved candidate to interview stage", when: "4 hours ago" },
-  { id: "a3", who: "Pooja Sethi", what: "was invited to join the team", when: "1 day ago" },
-];
+/** Backend stores the radio code; show a friendly label. */
+const ACCESS_SCOPE_LABEL: Record<string, string> = {
+  all: "All Clients & Jobs",
+  clients: "Specific Clients",
+  department: "Specific Department",
+};
+
+const KNOWN_ROLES: Role[] = ["Admin", "Manager", "Recruiter", "Viewer"];
+
+function fmtLastActive(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function mapMember(raw: TeamMemberSummaryResponse): Member {
+  const role = (KNOWN_ROLES.includes(raw.role as Role) ? raw.role : "Recruiter") as Role;
+  return {
+    id: raw.id,
+    name: raw.fullName,
+    email: raw.email,
+    role,
+    department: raw.department?.trim() || "—",
+    accessScope: raw.accessScope ? ACCESS_SCOPE_LABEL[raw.accessScope] ?? raw.accessScope : "—",
+    status: STATUS_LABEL[raw.status] ?? "Active",
+    lastActive: fmtLastActive(raw.lastActivity),
+  };
+}
+
+// Activity domain doesn't exist yet — Recent Activity renders its empty state.
+const ACTIVITY: Activity[] = [];
 
 const PAGE_SIZE_DEFAULT = 10;
-const ROLE_OPTIONS = ["All Roles", "Admin", "Manager", "Recruiter"];
+const ROLE_OPTIONS = ["All Roles", "Admin", "Manager", "Recruiter", "Viewer"];
 const STATUS_OPTIONS = ["All Status", "Active", "Invited", "Inactive"];
 
 const ROLE_BADGE: Record<Role, string> = {
   Admin: "bg-brand-50 text-brand-700",
   Manager: "bg-blue-50 text-blue-700",
   Recruiter: "bg-green-50 text-green-700",
+  Viewer: "bg-ink-100 text-ink-600",
 };
 const STATUS_BADGE: Record<Status, string> = {
   Active: "bg-green-50 text-green-700",
@@ -77,26 +105,61 @@ export default function TeamPage() {
   const [rowsPerPage, setRowsPerPage] = useState(PAGE_SIZE_DEFAULT);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const total = MEMBERS.length;
-  const active = MEMBERS.filter((m) => m.status === "Active").length;
-  const invited = MEMBERS.filter((m) => m.status === "Invited").length;
-  const inactive = MEMBERS.filter((m) => m.status === "Inactive").length;
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const roleCounts: Record<Role, number> = {
-    Admin: MEMBERS.filter((m) => m.role === "Admin").length,
-    Manager: MEMBERS.filter((m) => m.role === "Manager").length,
-    Recruiter: MEMBERS.filter((m) => m.role === "Recruiter").length,
-  };
+  const { confirm, triggerDelete, resetConfirm } = useConfirmDelete();
+
+  const fetched = useRef(false);
+  useEffect(() => {
+    if (fetched.current) return; // StrictMode double-invoke guard
+    fetched.current = true;
+    listTeamMembers(0, 100)
+      .then(({ content }) => setMembers(content.map(mapMember)))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load team members"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleEdit = (id: string) => router.push(`/company/team/${id}/edit`);
+
+  const handleDelete = (member: Member) =>
+    triggerDelete(`Delete "${member.name}"?`, async () => {
+      await deleteTeamMember(member.id);
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(member.id);
+        return next;
+      });
+      resetConfirm();
+    });
+
+  const total = members.length;
+  const active = members.filter((m) => m.status === "Active").length;
+  const invited = members.filter((m) => m.status === "Invited").length;
+  const inactive = members.filter((m) => m.status === "Inactive").length;
+
+  const roleCounts = useMemo(() => {
+    const counts = { Admin: 0, Manager: 0, Recruiter: 0, Viewer: 0 } as Record<Role, number>;
+    for (const m of members) counts[m.role] += 1;
+    return counts;
+  }, [members]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return MEMBERS.filter((m) => {
+    return members.filter((m) => {
       if (term && !m.name.toLowerCase().includes(term) && !m.email.toLowerCase().includes(term) && !m.role.toLowerCase().includes(term)) return false;
       if (roleFilter !== "All Roles" && m.role !== roleFilter) return false;
       if (statusFilter !== "All Status" && m.status !== statusFilter) return false;
       return true;
     });
-  }, [search, roleFilter, statusFilter]);
+  }, [members, search, roleFilter, statusFilter]);
+
+  // Reset to the first page whenever the result set changes.
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, statusFilter, rowsPerPage]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const pageRows = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -176,13 +239,17 @@ export default function TeamPage() {
 
               {/* Table / empty state */}
               <div className="card overflow-hidden">
-                {total === 0 ? (
-                  <EmptyTeam />
+                {loading ? (
+                  <div className="py-16 text-center text-ink-400 text-[13px]">Loading team…</div>
+                ) : error ? (
+                  <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-[13px] text-red-700">{error}</div>
+                ) : total === 0 ? (
+                  <EmptyTeam onAdd={goToAdd} />
                 ) : filtered.length === 0 ? (
                   <div className="py-14 text-center text-ink-500 text-[13px]">No team members match your filters.</div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-[32px_1.6fr_0.9fr_1fr_1.3fr_0.8fr_1fr_48px] items-center px-5 py-3 border-b border-ink-100 bg-ink-50/60 text-[12px] font-semibold text-ink-500">
+                    <div className="grid grid-cols-[32px_1.6fr_0.9fr_1fr_1.3fr_0.8fr_1fr_72px] items-center px-5 py-3 border-b border-ink-100 bg-ink-50/60 text-[12px] font-semibold text-ink-500">
                       <input type="checkbox" checked={allOnPageSelected} onChange={toggleAll} aria-label="Select all" className="w-4 h-4 rounded accent-brand-600" />
                       <div>Member</div>
                       <div>Role</div>
@@ -193,7 +260,7 @@ export default function TeamPage() {
                       <div className="text-right">Actions</div>
                     </div>
                     {pageRows.map((m) => (
-                      <MemberRow key={m.id} member={m} checked={selected.has(m.id)} onToggle={() => toggleRow(m.id)} />
+                      <MemberRow key={m.id} member={m} checked={selected.has(m.id)} onToggle={() => toggleRow(m.id)} onEdit={handleEdit} onDelete={handleDelete} />
                     ))}
 
                     {/* Footer */}
@@ -310,14 +377,18 @@ export default function TeamPage() {
           </div>
         </aside>
       </div>
+
+      {confirm.open && (
+        <ConfirmDialog label={confirm.label} onConfirm={confirm.onConfirm} onCancel={resetConfirm} />
+      )}
     </div>
   );
 }
 
 /* ── Pieces ───────────────────────────────────────────────────────────── */
-function MemberRow({ member, checked, onToggle }: { member: Member; checked: boolean; onToggle: () => void }) {
+function MemberRow({ member, checked, onToggle, onEdit, onDelete }: { member: Member; checked: boolean; onToggle: () => void; onEdit: (id: string) => void; onDelete: (member: Member) => void }) {
   return (
-    <div className="grid grid-cols-[32px_1.6fr_0.9fr_1fr_1.3fr_0.8fr_1fr_48px] items-center px-5 py-3 border-b border-ink-100 last:border-0 text-[13px] text-ink-700">
+    <div className="grid grid-cols-[32px_1.6fr_0.9fr_1fr_1.3fr_0.8fr_1fr_72px] items-center px-5 py-3 border-b border-ink-100 last:border-0 text-[13px] text-ink-700">
       <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Select ${member.name}`} className="w-4 h-4 rounded accent-brand-600" />
       <div className="flex items-center gap-3 min-w-0">
         <span className={`w-9 h-9 rounded-full grid place-items-center shrink-0 text-[12px] font-bold ${avatarColor(member.name)}`}>{initials(member.name)}</span>
@@ -331,12 +402,29 @@ function MemberRow({ member, checked, onToggle }: { member: Member; checked: boo
       <div className="flex items-center gap-1.5 min-w-0 text-ink-600"><span className="text-ink-400 shrink-0"><UsersMiniIcon /></span><span className="truncate">{member.accessScope}</span></div>
       <div><span className={`text-[11.5px] font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[member.status]}`}>{member.status}</span></div>
       <div className="text-[12.5px] text-ink-500 truncate">{member.lastActive}</div>
-      <div className="text-right"><button aria-label="Row actions" className="text-ink-400 hover:text-ink-700 transition w-8 h-8 grid place-items-center">⋯</button></div>
+      <div className="flex items-center justify-end gap-1">
+        <RowAction label="Edit" onClick={() => onEdit(member.id)} className="text-ink-400 hover:text-brand-600 hover:bg-brand-50">
+          <EditIcon />
+        </RowAction>
+        <RowAction label="Delete" onClick={() => onDelete(member)} className="text-ink-400 hover:text-red-600 hover:bg-red-50">
+          <TrashIcon />
+        </RowAction>
+      </div>
     </div>
   );
 }
 
-function EmptyTeam() {
+function RowAction({ label, onClick, className, children }: { label: string; onClick?: () => void; className?: string; children: React.ReactNode }) {
+  return (
+    <Tooltip label={label}>
+      <button type="button" onClick={onClick} aria-label={label} className={`w-7 h-7 grid place-items-center rounded-lg transition-colors ${className ?? ""}`}>
+        {children}
+      </button>
+    </Tooltip>
+  );
+}
+
+function EmptyTeam({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="py-16 flex flex-col items-center text-center px-6">
       <div className="relative w-40 h-40 rounded-full bg-brand-50/60 grid place-items-center mb-2 text-brand-400">
@@ -347,7 +435,7 @@ function EmptyTeam() {
       <p className="text-ink-500 text-[13px] mt-1.5 max-w-[380px] leading-relaxed">
         Get started by adding your first team member. Invite your team and collaborate seamlessly.
       </p>
-      <button className="mt-5 px-5 py-2.5 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity inline-flex items-center gap-2">
+      <button onClick={onAdd} className="mt-5 px-5 py-2.5 rounded-xl text-white text-[13px] font-semibold btn-gradient-brand hover:opacity-90 transition-opacity inline-flex items-center gap-2">
         <span>+</span> Add Team Member
       </button>
     </div>
@@ -383,3 +471,5 @@ function FunnelIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" 
 function UsersMiniIcon() { return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.6" /><circle cx="17" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.6" /><path d="M3 20c0-3 3-5 6-5s6 2 6 5M14 20c0-2 2-3 3.5-3 2 0 3.5 1 3.5 3" stroke="currentColor" strokeWidth="1.6" /></svg>); }
 function UsersLargeIcon() { return (<svg width="68" height="68" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.3" /><circle cx="16" cy="9" r="2.6" stroke="currentColor" strokeWidth="1.3" /><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M14.5 19c0-2 1.8-3.3 3.5-3.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>); }
 function ClipboardIcon() { return (<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="12" height="17" rx="1.5" stroke="currentColor" strokeWidth="1.4" /><path d="M9 4V3h6v1" stroke="currentColor" strokeWidth="1.4" /><path d="M9 10h6M9 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>); }
+function EditIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10a2 2 0 0 0-3-3L5 17v3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M13.5 6.5l3 3" stroke="currentColor" strokeWidth="1.6" /></svg>); }
+function TrashIcon() { return (<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>); }

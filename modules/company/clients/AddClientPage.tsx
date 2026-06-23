@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "./services/client.service";
+import {
+  createClient,
+  getClient,
+  updateClient,
+  type ClientResponse,
+} from "./services/client.service";
 
 /* ── Option lists ─────────────────────────────────────────────────────── */
 const INDUSTRIES = ["Information Technology", "Finance & Banking", "Healthcare", "Manufacturing", "Retail & E-commerce", "Education", "Consulting", "Other"];
@@ -24,6 +29,7 @@ interface ClientForm {
   sameAsBilling: boolean;
   billingEmail: string; billingCountryCode: string; billingPhone: string; billingAddress: string;
   city: string; state: string; postalCode: string;
+  accountManager: string;
 }
 
 const EMPTY: ClientForm = {
@@ -35,17 +41,64 @@ const EMPTY: ClientForm = {
   sameAsBilling: false,
   billingEmail: "", billingCountryCode: "+91", billingPhone: "", billingAddress: "",
   city: "", state: "", postalCode: "",
+  accountManager: "",
 };
+
+/** Map a fetched client (edit mode) onto the form shape. */
+function toForm(c: ClientResponse): ClientForm {
+  return {
+    clientName: c.clientName ?? "",
+    website: c.website ?? "",
+    industry: c.industry ?? "",
+    companySize: c.companySize ?? "",
+    companyType: c.companyType ?? "",
+    annualRevenue: c.annualRevenue ?? "",
+    headquarters: c.headquarters ?? "",
+    country: c.country ?? "",
+    timeZone: c.timeZone ?? "",
+    contactName: c.contactName ?? "",
+    email: c.email ?? "",
+    countryCode: c.countryCode ?? "+91",
+    phone: c.phone ?? "",
+    designation: c.designation ?? "",
+    department: c.department ?? "",
+    linkedin: c.linkedin ?? "",
+    sameAsBilling: false,
+    billingEmail: c.billingEmail ?? "",
+    billingCountryCode: c.billingCountryCode ?? "+91",
+    billingPhone: c.billingPhone ?? "",
+    billingAddress: c.billingAddress ?? "",
+    city: c.city ?? "",
+    state: c.state ?? "",
+    postalCode: c.postalCode ?? "",
+    accountManager: c.accountManager ?? "",
+  };
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function AddClientPage() {
+/* Shared create/edit form. With a `clientId` it loads the client, prefills the
+ * form, and saves via PUT; without one it creates a new client via POST. */
+export default function AddClientPage({ clientId }: { clientId?: string } = {}) {
+  const isEdit = Boolean(clientId);
   const router = useRouter();
   const [form, setForm] = useState<ClientForm>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof ClientForm, string>>>({});
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(isEdit);
+
+  // Edit mode — fetch the client once and prefill the form (StrictMode guard).
+  const fetched = useRef(false);
+  useEffect(() => {
+    if (!clientId || fetched.current) return;
+    fetched.current = true;
+    getClient(clientId)
+      .then((client) => setForm(toForm(client)))
+      .catch((err) => setSubmitError(err instanceof Error ? err.message : "Failed to load client"))
+      .finally(() => setLoading(false));
+  }, [clientId]);
 
   const set = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
     setForm((prev) => {
@@ -87,7 +140,7 @@ export default function AddClientPage() {
     setSaving(true);
     setSubmitError(null);
     try {
-      await createClient({
+      const payload = {
         clientName: form.clientName.trim(),
         website: form.website.trim() || undefined,
         industry: form.industry,
@@ -111,7 +164,13 @@ export default function AddClientPage() {
         city: form.city.trim() || undefined,
         state: form.state.trim() || undefined,
         postalCode: form.postalCode.trim() || undefined,
-      });
+        accountManager: form.accountManager.trim() || undefined,
+      };
+      if (isEdit && clientId) {
+        await updateClient(clientId, payload);
+      } else {
+        await createClient(payload);
+      }
       setSaved(true);
       setTimeout(() => router.push("/company/clients"), 1200);
     } catch (err) {
@@ -121,19 +180,29 @@ export default function AddClientPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
+        <div className="py-24 text-center text-ink-400 text-[13px]">Loading client…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-[12px] text-ink-500 mb-2">
         <Link href="/company/clients" className="hover:text-brand-600 transition-colors">Clients</Link>
         <span aria-hidden="true">›</span>
-        <span className="text-ink-700 font-medium">Add New Client</span>
+        <span className="text-ink-700 font-medium">{isEdit ? "Edit Client" : "Add New Client"}</span>
       </div>
 
       {/* Title */}
-      <h1 className="font-display font-extrabold text-[22px] text-ink-900 tracking-tight">Add New Client</h1>
+      <h1 className="font-display font-extrabold text-[22px] text-ink-900 tracking-tight">{isEdit ? "Edit Client" : "Add New Client"}</h1>
       <p className="text-[13.5px] text-ink-500 mt-1 mb-5">
-        Add client organization details to start managing your relationship and jobs.
+        {isEdit
+          ? "Update this client organization's details."
+          : "Add client organization details to start managing your relationship and jobs."}
       </p>
 
       <div className="flex gap-6 items-start">
@@ -141,7 +210,7 @@ export default function AddClientPage() {
         <div className="flex-1 min-w-0 space-y-5">
           {saved && (
             <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-[13px] font-semibold flex items-center gap-2">
-              <CheckIcon /> Client saved successfully.
+              <CheckIcon /> {isEdit ? "Client updated successfully." : "Client saved successfully."}
             </div>
           )}
           {submitError && (
@@ -193,6 +262,14 @@ export default function AddClientPage() {
                 <Field label="Postal / ZIP Code" value={form.postalCode} onChange={(v) => set("postalCode", v)} placeholder="Enter postal / zip code" maxLength={20} />
               </div>
             </Section>
+
+            {/* Account Management */}
+            <Section title="Account Management" icon={<UserIcon />}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Field label="Account Manager" value={form.accountManager} onChange={(v) => set("accountManager", v)} placeholder="Assign an account manager" maxLength={150} />
+              </div>
+              <p className="mt-2 text-[11.5px] text-ink-400">The recruiter who owns this client relationship. Leave blank to keep it unassigned.</p>
+            </Section>
           </div>
 
           {/* Action bar */}
@@ -211,7 +288,7 @@ export default function AddClientPage() {
               className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: "var(--gradient-brand)" }}
             >
-              {saving ? "Saving…" : "Save Client"} <ChevronRight />
+              {saving ? "Saving…" : isEdit ? "Update Client" : "Save Client"} <ChevronRight />
             </button>
           </div>
         </div>

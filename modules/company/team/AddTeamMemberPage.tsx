@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  createTeamMember,
+  getTeamMember,
+  updateTeamMember,
+  type TeamMemberResponse,
+} from "./services/team.service";
 
 /* ── Option lists ─────────────────────────────────────────────────────── */
 const COUNTRY_CODES = ["+91", "+1", "+44", "+65", "+971"];
@@ -37,18 +43,54 @@ const EMPTY: TeamMemberForm = {
   message: "",
 };
 
-export default function AddTeamMemberPage() {
+/** Map a backend TeamMemberResponse onto the edit form. */
+function toForm(member: TeamMemberResponse): TeamMemberForm {
+  return {
+    fullName: member.fullName ?? "",
+    email: member.email ?? "",
+    countryCode: member.countryCode || "+91",
+    phone: member.phone ?? "",
+    designation: member.designation ?? "",
+    department: member.department ?? "",
+    employeeType: member.employeeType ?? "",
+    role: member.role ?? "",
+    permissions: member.permissions ?? "",
+    reportingManager: member.reportingManager ?? "",
+    accessScope: member.accessScope || "all",
+    sendVia: member.invitedVia === "sms" ? "sms" : "email",
+    tempPasswordEnabled: member.tempPasswordEnabled,
+    twoFactor: member.twoFactorEnabled,
+    message: member.message ?? "",
+  };
+}
+
+export default function AddTeamMemberPage({ memberId }: { memberId?: string } = {}) {
   const router = useRouter();
+  const isEdit = Boolean(memberId);
   const [form, setForm] = useState<TeamMemberForm>(EMPTY);
+  const [loading, setLoading] = useState(isEdit);
   const [errors, setErrors] = useState<Partial<Record<keyof TeamMemberForm, string>>>({});
   const [tempPassword, setTempPassword] = useState(genPassword);
   const [showPassword, setShowPassword] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const set = <K extends keyof TeamMemberForm>(key: K, value: TeamMemberForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
+
+  // Edit mode — load the existing member once and prefill the form.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!memberId || prefilled.current) return; // StrictMode double-invoke guard
+    prefilled.current = true;
+    getTeamMember(memberId)
+      .then((member) => setForm(toForm(member)))
+      .catch((err) => setSubmitError(err instanceof Error ? err.message : "Failed to load team member"))
+      .finally(() => setLoading(false));
+  }, [memberId]);
 
   function validate(): boolean {
     const errs: Partial<Record<keyof TeamMemberForm, string>> = {};
@@ -62,11 +104,45 @@ export default function AddTeamMemberPage() {
     return Object.keys(errs).length === 0;
   }
 
-  function handleSend() {
+  async function handleSend() {
     if (!validate()) return;
-    // No team backend yet — confirm locally then return to the list.
-    setSaved(true);
-    setTimeout(() => router.push("/company/team"), 1200);
+    setSaving(true);
+    setSubmitError(null);
+    const payload = {
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      countryCode: form.countryCode || undefined,
+      phone: form.phone.trim() || undefined,
+      designation: form.designation.trim(),
+      department: form.department || undefined,
+      employeeType: form.employeeType || undefined,
+      role: form.role,
+      permissions: form.permissions,
+      reportingManager: form.reportingManager || undefined,
+      accessScope: form.accessScope,
+      invitedVia: form.sendVia,
+      tempPasswordEnabled: form.tempPasswordEnabled,
+      twoFactorEnabled: form.twoFactor,
+      message: form.message.trim() || undefined,
+    };
+    try {
+      if (isEdit && memberId) await updateTeamMember(memberId, payload);
+      else await createTeamMember(payload);
+      setSaved(true);
+      setTimeout(() => router.push("/company/team"), 1200);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : isEdit ? "Failed to update team member" : "Failed to invite team member");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
+        <div className="py-24 text-center text-ink-400 text-[13px]">Loading team member…</div>
+      </div>
+    );
   }
 
   return (
@@ -75,18 +151,23 @@ export default function AddTeamMemberPage() {
       <div className="flex items-center gap-1.5 text-[12px] text-ink-500 mb-2">
         <Link href="/company/team" className="hover:text-brand-600 transition-colors">Team</Link>
         <span aria-hidden="true">›</span>
-        <span className="text-ink-700 font-medium">Add Team Member</span>
+        <span className="text-ink-700 font-medium">{isEdit ? "Edit Team Member" : "Add Team Member"}</span>
       </div>
 
-      <h1 className="font-display font-extrabold text-[22px] text-ink-900 tracking-tight">Add Team Member</h1>
-      <p className="text-[13.5px] text-ink-500 mt-1 mb-5">Invite a new team member to collaborate and manage your hiring together.</p>
+      <h1 className="font-display font-extrabold text-[22px] text-ink-900 tracking-tight">{isEdit ? "Edit Team Member" : "Add Team Member"}</h1>
+      <p className="text-[13.5px] text-ink-500 mt-1 mb-5">{isEdit ? "Update this team member's details, role and access." : "Invite a new team member to collaborate and manage your hiring together."}</p>
 
       <div className="flex gap-6 items-start">
         {/* ── Main form ── */}
         <div className="flex-1 min-w-0 space-y-5">
           {saved && (
             <div className="p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-[13px] font-semibold flex items-center gap-2">
-              <CheckIcon /> Invitation sent successfully.
+              <CheckIcon /> {isEdit ? "Team member updated successfully." : "Invitation sent successfully."}
+            </div>
+          )}
+          {submitError && (
+            <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px] font-semibold">
+              {submitError}
             </div>
           )}
 
@@ -191,8 +272,8 @@ export default function AddTeamMemberPage() {
           {/* Action bar */}
           <div className="flex items-center justify-end gap-3 border-t border-ink-100 pt-4">
             <button type="button" onClick={() => router.push("/company/team")} className="px-6 py-2.5 rounded-lg border border-ink-200 text-ink-700 text-[13.5px] font-semibold hover:bg-ink-100 transition">Cancel</button>
-            <button type="button" onClick={handleSend} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2" style={{ background: "var(--gradient-brand)" }}>
-              Send Invitation <ChevronRight />
+            <button type="button" onClick={handleSend} disabled={saving || loading} className="px-6 py-2.5 rounded-lg text-white text-[13.5px] font-semibold hover:opacity-95 transition inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed" style={{ background: "var(--gradient-brand)" }}>
+              {saving ? (isEdit ? "Saving…" : "Sending…") : (isEdit ? "Save Changes" : "Send Invitation")} <ChevronRight />
             </button>
           </div>
         </div>

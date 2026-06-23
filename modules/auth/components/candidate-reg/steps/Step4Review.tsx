@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import type React from "react";
 import type { CandidateRegData } from "../../../types/auth.types";
 import { PersonIcon, BriefcaseIcon, EditIcon, ArrowLeftIcon, SpinnerIcon } from "../shared/icons";
-import { uploadProfilePicture } from "../../../services/candidate.service";
+import { uploadProfilePicture, submitProfile } from "../../../services/candidate.service";
 
 interface Props {
   data: CandidateRegData;
@@ -16,6 +16,7 @@ interface Props {
 export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Props) {
   const [confirmed, setConfirmed]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [picturePreview, setPicturePreview] = useState<string | null>(null);
   const [pictureUploading, setPictureUploading] = useState(false);
   const [pictureError, setPictureError] = useState<string | null>(null);
@@ -61,9 +62,15 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitting(false);
-    onSubmit();
+    setSubmitError(null);
+    try {
+      await submitProfile();
+      onSubmit();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit profile. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -232,6 +239,12 @@ export default function Step4Review({ data, onBack, onEditStep, onSubmit }: Prop
           {submitting ? <><SpinnerIcon /> Submitting...</> : <>Submit Profile <SendIcon /></>}
         </button>
       </div>
+
+      {submitError && (
+        <p role="alert" className="mt-3 text-[13px] text-red-600 text-right">
+          {submitError}
+        </p>
+      )}
     </div>
   );
 }
